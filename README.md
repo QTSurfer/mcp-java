@@ -30,17 +30,14 @@ Pre-built binaries are attached to every [GitHub Release](https://github.com/QTS
 | Platform | Asset |
 |----------|-------|
 | Linux x86_64 | `qtsurfer-mcp-linux-amd64` |
-| macOS x86_64 (Intel) | `qtsurfer-mcp-macos-amd64` |
 | macOS arm64 (Apple Silicon) | `qtsurfer-mcp-macos-arm64` |
 | Windows x86_64 | `qtsurfer-mcp-windows-amd64.exe` |
+
+Intel Mac users: use the [fat JAR](#fat-jar) with JDK 21+.
 
 ```bash
 # Linux
 curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-linux-amd64
-chmod +x qtsurfer-mcp
-
-# macOS Intel
-curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-macos-amd64
 chmod +x qtsurfer-mcp
 
 # macOS Apple Silicon
