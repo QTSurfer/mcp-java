@@ -196,6 +196,12 @@ public class MyStrategy extends AbstractTickerStrategy {
 }
 ```
 
+For help writing strategies — indicators, window listeners, state management, examples, and advanced patterns — install the **[QTSurfer Strategy Skills](https://github.com/QTSurfer/strategy-skills)**:
+
+```bash
+npx skills add QTSurfer/strategy-skills
+```
+
 ## Building from source
 
 ```bash
