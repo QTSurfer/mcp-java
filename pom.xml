@@ -179,4 +179,43 @@
             <url>https://jitpack.io</url>
         </repository>
     </repositories>
+
+    <profiles>
+        <!--
+            GraalVM native-image profile. Build with:
+              mvn -B -Pnative -DskipTests package native:compile-no-fork
+            Produces target/qtsurfer-mcp (single ELF binary, ~50 MB, ~40 ms startup).
+            Reachability metadata for MCP SDK ServiceLoader sits in
+            src/main/resources/META-INF/native-image/. Common libs (logback, jackson,
+            ssl) are covered by the GraalVM Reachability Metadata Repository.
+            Use Dockerfile.native to build for Linux x86_64 on claude-builds.
+        -->
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.3</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <imageName>qtsurfer-mcp</imageName>
+                            <mainClass>com.qtsurfer.mcp.Main</mainClass>
+                            <metadataRepository>
+                                <enabled>true</enabled>
+                            </metadataRepository>
+                            <buildArgs>
+                                <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
+                                <buildArg>--initialize-at-build-time=ch.qos.logback,org.slf4j</buildArg>
+                                <buildArg>-O2</buildArg>
+                                <buildArg>--no-fallback</buildArg>
+                                <buildArg>--report-unsupported-elements-at-runtime</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

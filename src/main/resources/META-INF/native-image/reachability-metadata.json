@@ -1,0 +1,26 @@
+{
+  "reflection": [
+    {
+      "type": "ch.qos.logback.core.ConsoleAppender",
+      "methods": [
+        {"name": "<init>", "parameterTypes": []},
+        {"name": "setTarget", "parameterTypes": ["java.lang.String"]}
+      ]
+    },
+    {
+      "type": "io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier",
+      "methods": [{"name": "<init>", "parameterTypes": []}]
+    },
+    {
+      "type": "io.modelcontextprotocol.json.schema.jackson3.JacksonJsonSchemaValidatorSupplier",
+      "methods": [{"name": "<init>", "parameterTypes": []}]
+    }
+  ],
+  "resources": [
+    {"glob": "META-INF/services/io.modelcontextprotocol.json.McpJsonMapperSupplier"},
+    {"glob": "META-INF/services/io.modelcontextprotocol.json.schema.JsonSchemaValidatorSupplier"},
+    {"glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"},
+    {"glob": "META-INF/services/ch.qos.logback.classic.spi.Configurator"},
+    {"glob": "logback.xml"}
+  ]
+}

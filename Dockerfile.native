@@ -1,0 +1,32 @@
+# GraalVM native-image build of qtsurfer-mcp. Produces a single ELF binary
+# packaged in a distroless runtime image.
+#
+# Target platform: Linux x86_64 (build on claude-builds LXC or any GraalVM host).
+#   docker build --platform linux/amd64 -f Dockerfile.native \
+#     -t qtsurfer/mcp-native:0.2.0 .
+#
+# To extract the binary without running the image:
+#   docker create --name mcp-native qtsurfer/mcp-native:0.2.0
+#   docker cp mcp-native:/app/qtsurfer-mcp ./qtsurfer-mcp
+#   docker rm mcp-native
+
+# --- Stage 1: build the native binary inside the GraalVM CE 25 image. ---
+FROM ghcr.io/graalvm/native-image-community:25 AS build
+WORKDIR /src
+RUN microdnf install -y maven gcc glibc-static zlib-static || \
+    dnf install -y maven gcc glibc-static zlib-static
+COPY pom.xml ./
+RUN mvn -B -q dependency:go-offline -Pnative || true
+COPY src ./src
+RUN mvn -B -Pnative -DskipTests package native:compile-no-fork
+
+# --- Stage 2: pull libz (distroless/cc lacks it). ---
+FROM debian:12-slim AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- Stage 3: distroless runtime (glibc + libgcc + libssl for HTTPS). ---
+FROM gcr.io/distroless/cc-debian12
+COPY --from=deps /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/libz.so.1
+COPY --from=build /src/target/qtsurfer-mcp /app/qtsurfer-mcp
+ENTRYPOINT ["/app/qtsurfer-mcp"]

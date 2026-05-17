@@ -16,23 +16,79 @@
 Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, explore instruments, submit a strategy, and get full execution metrics — all without leaving the chat.
 
 - **Stdio transport** — compatible with Claude Code, OpenAI Codex, and any MCP client.
-- **Fat JAR** — single file, no installation beyond JDK 21+.
+- **Native binary** — ~17 ms startup, ~44 MB, no JVM required. Available for Linux, macOS, and Windows.
+- **Fat JAR fallback** — single file, runs anywhere with JDK 21+.
+- **Docker** — `docker run -i` for containerised deployments (`eclipse-temurin:21-jre-alpine`, ~230 MB).
 - **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — compile → prepare → execute orchestration with retry and cancellation.
 
 ## Installation
 
-Download the latest fat JAR from [Releases](https://github.com/QTSurfer/mcp-java/releases/latest):
+### Native binary (recommended)
+
+Pre-built binaries are attached to every [GitHub Release](https://github.com/QTSurfer/mcp-java/releases/latest):
+
+| Platform | Asset |
+|----------|-------|
+| Linux x86_64 | `qtsurfer-mcp-linux-amd64` |
+| macOS x86_64 (Intel) | `qtsurfer-mcp-macos-amd64` |
+| macOS arm64 (Apple Silicon) | `qtsurfer-mcp-macos-arm64` |
+| Windows x86_64 | `qtsurfer-mcp-windows-amd64.exe` |
+
+```bash
+# Linux
+curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-linux-amd64
+chmod +x qtsurfer-mcp
+
+# macOS Intel
+curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-macos-amd64
+chmod +x qtsurfer-mcp
+
+# macOS Apple Silicon
+curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-macos-arm64
+chmod +x qtsurfer-mcp
+
+# Windows (PowerShell)
+Invoke-WebRequest -Uri https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-windows-amd64.exe `
+  -OutFile qtsurfer-mcp.exe
+```
+
+### Fat JAR
+
+Requires **JDK 21+**. Works on any platform.
 
 ```bash
 curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.2.0.jar
+java -jar qtsurfer-mcp-java-0.2.0.jar --help
 ```
 
-Requires **JDK 21+**.
+### Docker
+
+```bash
+docker pull ghcr.io/qtsurfer/mcp-java:latest
+
+# Run (MCP over stdio — pipe stdin/stdout)
+docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
+```
 
 ## Configuration
 
 ### Claude Code (`~/.claude.json`)
 
+**Native binary:**
+```json
+{
+  "mcpServers": {
+    "qtsurfer": {
+      "type": "stdio",
+      "command": "/path/to/qtsurfer-mcp",
+      "args": ["--url", "https://api.qtsurfer.com/v1"],
+      "env": { "QTS_TOKEN": "<your-api-token>" }
+    }
+  }
+}
+```
+
+**Fat JAR:**
 ```json
 {
   "mcpServers": {
@@ -40,9 +96,20 @@ Requires **JDK 21+**.
       "type": "stdio",
       "command": "java",
       "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.2.0.jar", "--url", "https://api.qtsurfer.com/v1"],
-      "env": {
-        "QTS_TOKEN": "<your-api-token>"
-      }
+      "env": { "QTS_TOKEN": "<your-api-token>" }
+    }
+  }
+}
+```
+
+**Docker:**
+```json
+{
+  "mcpServers": {
+    "qtsurfer": {
+      "type": "stdio",
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "QTS_TOKEN", "ghcr.io/qtsurfer/mcp-java:latest"]
     }
   }
 }
@@ -52,8 +119,8 @@ Requires **JDK 21+**.
 
 ```toml
 [mcp_servers.qtsurfer]
-command = "java"
-args = ["-jar", "/path/to/qtsurfer-mcp-java-0.2.0.jar", "--url", "https://api.qtsurfer.com/v1"]
+command = "/path/to/qtsurfer-mcp"
+args = ["--url", "https://api.qtsurfer.com/v1"]
 
 [mcp_servers.qtsurfer.env]
 QTS_TOKEN = "<your-api-token>"
@@ -62,7 +129,8 @@ QTS_TOKEN = "<your-api-token>"
 ## Usage
 
 ```
-Usage: java -jar qtsurfer-mcp-java.jar [options]
+Usage: qtsurfer-mcp [options]        # native binary
+       java -jar qtsurfer-mcp-java.jar [options]  # fat JAR
 
 Options:
   --url   <base-url>  API base URL (default: https://api.qtsurfer.com/v1)
@@ -70,6 +138,8 @@ Options:
   --token <jwt>       Bearer token (default: QTS_TOKEN env var)
   --stub              Use in-memory stub (no backend required)
   --help              Print this message and exit
+
+MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 ```
 
 ## Tools
@@ -133,12 +203,23 @@ public class MyStrategy extends AbstractTickerStrategy {
 
 ```bash
 git clone https://github.com/QTSurfer/mcp-java.git
-cd qtsurfer-mcp-java
-mvn verify          # compile + unit tests + integration tests
-mvn package -DskipTests  # fat JAR → target/mcp-*.jar
+cd mcp-java
+
+# Fat JAR
+mvn package -DskipTests          # → target/mcp-*.jar
+
+# Unit + integration tests
+mvn verify
+
+# Native binary (requires GraalVM 21+)
+mvn -Pnative -DskipTests package native:compile-no-fork   # → target/qtsurfer-mcp
+
+# Native via Docker (Linux x86_64, no local GraalVM needed)
+docker build --platform linux/amd64 -f Dockerfile.native -t qtsurfer/mcp-native .
+docker cp $(docker create qtsurfer/mcp-native):/app/qtsurfer-mcp ./qtsurfer-mcp
 ```
 
-Requires JDK 21+ and Maven 3.8+.
+Requires JDK 21+ (GraalVM for native) and Maven 3.8+.
 
 ## License
 

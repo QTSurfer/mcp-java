@@ -27,5 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `get_job_status` — poll a job and retrieve full execution metrics (P&L, trades, win rate, Sharpe, Sortino, CAGR, max drawdown) once completed.
   - `list_jobs` — list jobs submitted in the current session, with optional status filter.
 - **Fat JAR distribution** — `java -jar qtsurfer-mcp-java-vX.Y.Z.jar` with all dependencies bundled; no installation required beyond JDK 21+.
+- **GraalVM native binary** — ~17 ms startup, ~44 MB, no JVM required. Pre-built for Linux, macOS, and Windows via the CI release workflow. Build locally with `mvn -Pnative -DskipTests package native:compile-no-fork` or via `Dockerfile.native`.
+- **Docker support** — `Dockerfile` (fat JAR, eclipse-temurin:21-jre) and `Dockerfile.native` (GraalVM CE 25 → distroless/cc, ~65 MB).
 - **`--stub` mode** — in-memory stub for local testing without a backend token.
 - Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java) for all API interaction.
