@@ -1,0 +1,16 @@
+<configuration>
+  <!--
+    MCP stdio transport: stdout is reserved for JSON-RPC.
+    All logs must go to stderr so they never corrupt the protocol stream.
+  -->
+  <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="STDERR"/>
+  </root>
+</configuration>
