@@ -50,10 +50,6 @@ jobs:
           java-version: '21'
           distribution: 'graalvm'
           cache: 'maven'
-      - name: Install native-image (Windows)
-        if: runner.os == 'Windows'
-        run: gu install native-image
-        shell: cmd
       - name: Build native binary
         run: mvn -B -Pnative -DskipTests package native:compile-no-fork
       - name: Upload native binary
