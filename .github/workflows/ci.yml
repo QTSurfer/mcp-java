@@ -93,9 +93,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          mv native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp \
+             native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp-linux-amd64
+          mv native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp \
+             native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp-macos-arm64
+          mv "native-binaries/qtsurfer-mcp-windows-amd64.exe/qtsurfer-mcp.exe" \
+             "native-binaries/qtsurfer-mcp-windows-amd64.exe/qtsurfer-mcp-windows-amd64.exe"
           gh release upload "$GITHUB_REF_NAME" \
-            "native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp#qtsurfer-mcp-linux-amd64"
-          gh release upload "$GITHUB_REF_NAME" \
-            "native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp#qtsurfer-mcp-macos-arm64"
-          gh release upload "$GITHUB_REF_NAME" \
-            "native-binaries/qtsurfer-mcp-windows-amd64.exe/qtsurfer-mcp.exe#qtsurfer-mcp-windows-amd64.exe"
+            native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp-linux-amd64 \
+            native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp-macos-arm64 \
+            "native-binaries/qtsurfer-mcp-windows-amd64.exe/qtsurfer-mcp-windows-amd64.exe"
