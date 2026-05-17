@@ -80,11 +80,22 @@ jobs:
         run: |
           awk "/^## \[${GITHUB_REF_NAME}\]/{found=1; next} found && /^## \[/{exit} found{print}" \
             CHANGELOG.md > /tmp/release-notes.md
-          JAR=$(ls target/mcp-*.jar | grep -v 'original-' | head -1)
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --notes-file /tmp/release-notes.md \
-            "$JAR#qtsurfer-mcp-java-${GITHUB_REF_NAME}.jar" \
-            "native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp#qtsurfer-mcp-linux-amd64" \
-            "native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp#qtsurfer-mcp-macos-arm64" \
+            --notes-file /tmp/release-notes.md
+      - name: Upload fat JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR=$(ls target/mcp-*.jar | grep -v 'original-' | head -1)
+          gh release upload "$GITHUB_REF_NAME" "$JAR#qtsurfer-mcp-java-${GITHUB_REF_NAME}.jar"
+      - name: Upload native binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            "native-binaries/qtsurfer-mcp-linux-amd64/qtsurfer-mcp#qtsurfer-mcp-linux-amd64"
+          gh release upload "$GITHUB_REF_NAME" \
+            "native-binaries/qtsurfer-mcp-macos-arm64/qtsurfer-mcp#qtsurfer-mcp-macos-arm64"
+          gh release upload "$GITHUB_REF_NAME" \
             "native-binaries/qtsurfer-mcp-windows-amd64.exe/qtsurfer-mcp.exe#qtsurfer-mcp-windows-amd64.exe"
