@@ -17,14 +17,14 @@ Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, ex
 
 - **Stdio transport** — compatible with Claude Code, OpenAI Codex, and any MCP client.
 - **Fat JAR** — single file, no installation beyond JDK 21+.
-- **Backed by [`net.qtsurfer:sdk`](https://github.com/QTSurfer/sdk-java)** — compile → prepare → execute orchestration with retry and cancellation.
+- **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — compile → prepare → execute orchestration with retry and cancellation.
 
 ## Installation
 
 Download the latest fat JAR from [Releases](https://github.com/QTSurfer/mcp-java/releases/latest):
 
 ```bash
-curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-v0.1.0.jar
+curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.2.0.jar
 ```
 
 Requires **JDK 21+**.
@@ -39,7 +39,7 @@ Requires **JDK 21+**.
     "qtsurfer": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/path/to/qtsurfer-mcp-java-v0.1.0.jar", "--url", "https://api.qtsurfer.com/v1"],
+      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.2.0.jar", "--url", "https://api.qtsurfer.com/v1"],
       "env": {
         "QTS_TOKEN": "<your-api-token>"
       }
@@ -53,7 +53,7 @@ Requires **JDK 21+**.
 ```toml
 [mcp_servers.qtsurfer]
 command = "java"
-args = ["-jar", "/path/to/qtsurfer-mcp-java-v0.1.0.jar", "--url", "https://api.qtsurfer.com/v1"]
+args = ["-jar", "/path/to/qtsurfer-mcp-java-0.2.0.jar", "--url", "https://api.qtsurfer.com/v1"]
 
 [mcp_servers.qtsurfer.env]
 QTS_TOKEN = "<your-api-token>"

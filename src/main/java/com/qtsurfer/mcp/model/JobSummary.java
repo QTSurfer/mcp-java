@@ -1,4 +1,4 @@
-package net.qtsurfer.mcp.model;
+package com.qtsurfer.mcp.model;
 
 /**
  * Lightweight view of a backtest job returned by status / list queries.

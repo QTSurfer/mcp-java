@@ -1,9 +1,9 @@
-package net.qtsurfer.mcp.service;
+package com.qtsurfer.mcp.service;
 
-import net.qtsurfer.api.client.model.Exchange;
-import net.qtsurfer.api.client.model.InstrumentDetail;
-import net.qtsurfer.mcp.model.JobStatus;
-import net.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.model.InstrumentDetail;
+import com.qtsurfer.mcp.model.JobStatus;
+import com.qtsurfer.mcp.model.JobSummary;
 
 import java.time.Instant;
 import java.util.ArrayList;

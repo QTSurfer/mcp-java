@@ -1,8 +1,8 @@
-package net.qtsurfer.mcp;
+package com.qtsurfer.mcp;
 
-import net.qtsurfer.api.sdk.QTSurfer;
-import net.qtsurfer.mcp.service.BacktestingServiceStub;
-import net.qtsurfer.mcp.service.SdkBacktestingService;
+import com.qtsurfer.api.sdk.QTSurfer;
+import com.qtsurfer.mcp.service.BacktestingServiceStub;
+import com.qtsurfer.mcp.service.SdkBacktestingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

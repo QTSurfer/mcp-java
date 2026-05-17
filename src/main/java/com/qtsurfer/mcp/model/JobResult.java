@@ -1,4 +1,4 @@
-package net.qtsurfer.mcp.model;
+package com.qtsurfer.mcp.model;
 
 /**
  * Execution metrics captured when a backtest job reaches COMPLETED state.

@@ -1,15 +1,15 @@
-package net.qtsurfer.mcp.service;
+package com.qtsurfer.mcp.service;
 
-import net.qtsurfer.api.client.model.Exchange;
-import net.qtsurfer.api.client.model.InstrumentDetail;
-import net.qtsurfer.api.client.model.ResultMap;
-import net.qtsurfer.api.sdk.Backtest;
-import net.qtsurfer.api.sdk.BacktestOptions;
-import net.qtsurfer.api.sdk.BacktestRequest;
-import net.qtsurfer.api.sdk.QTSurfer;
-import net.qtsurfer.mcp.model.JobResult;
-import net.qtsurfer.mcp.model.JobStatus;
-import net.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.model.InstrumentDetail;
+import com.qtsurfer.api.client.model.ResultMap;
+import com.qtsurfer.api.sdk.Backtest;
+import com.qtsurfer.api.sdk.BacktestOptions;
+import com.qtsurfer.api.sdk.BacktestRequest;
+import com.qtsurfer.api.sdk.QTSurfer;
+import com.qtsurfer.mcp.model.JobResult;
+import com.qtsurfer.mcp.model.JobStatus;
+import com.qtsurfer.mcp.model.JobSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +88,7 @@ public class SdkBacktestingService implements BacktestingService {
         .build();
 
     // Compile first (blocking — fast, gives us early error on bad source)
-    net.qtsurfer.api.sdk.Strategy strategy;
+    com.qtsurfer.api.sdk.Strategy strategy;
     try {
       strategy = qts.compile(sdkRequest).join();
     } catch (Exception e) {

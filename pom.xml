@@ -3,9 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.qtsurfer</groupId>
+    <groupId>com.qtsurfer</groupId>
     <artifactId>mcp</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
     <name>qtsurfer-mcp-java</name>
 
@@ -34,7 +34,7 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mcp.version>1.1.2</mcp.version>
-        <sdk.version>v0.3.0</sdk.version>
+        <sdk.version>0.4.1</sdk.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.version>1.5.11</logback.version>
         <junit.version>5.11.4</junit.version>
@@ -45,7 +45,7 @@
     <dependencies>
         <!-- QTSurfer SDK — auth + compile/backtest workflow + downloads -->
         <dependency>
-            <groupId>com.github.QTSurfer</groupId>
+            <groupId>com.qtsurfer</groupId>
             <artifactId>sdk-java</artifactId>
             <version>${sdk.version}</version>
         </dependency>
@@ -149,7 +149,7 @@
                             <shadedArtifactAttached>false</shadedArtifactAttached>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>net.qtsurfer.mcp.Main</mainClass>
+                                    <mainClass>com.qtsurfer.mcp.Main</mainClass>
                                 </transformer>
                                 <!-- Required: merge ServiceLoader META-INF/services (MCP JSON mapper) -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>

@@ -1,7 +1,7 @@
-package net.qtsurfer.mcp;
+package com.qtsurfer.mcp;
 
-import net.qtsurfer.mcp.model.JobStatus;
-import net.qtsurfer.mcp.service.BacktestingServiceStub;
+import com.qtsurfer.mcp.model.JobStatus;
+import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

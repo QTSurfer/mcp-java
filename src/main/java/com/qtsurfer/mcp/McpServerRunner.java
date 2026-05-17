@@ -1,4 +1,4 @@
-package net.qtsurfer.mcp;
+package com.qtsurfer.mcp;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -7,8 +7,8 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
-import net.qtsurfer.mcp.service.BacktestingService;
-import net.qtsurfer.mcp.tool.McpTools;
+import com.qtsurfer.mcp.service.BacktestingService;
+import com.qtsurfer.mcp.tool.McpTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,7 @@ import java.io.OutputStream;
 public final class McpServerRunner {
 
   static final String SERVER_NAME = "qtsurfer-mcp";
-  static final String SERVER_VERSION = "0.1.0";
+  static final String SERVER_VERSION = "0.2.0";
 
   private static final Logger log = LoggerFactory.getLogger(McpServerRunner.class);
 

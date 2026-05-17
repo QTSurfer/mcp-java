@@ -1,14 +1,14 @@
-package net.qtsurfer.mcp.tool;
+package com.qtsurfer.mcp.tool;
 
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
-import net.qtsurfer.api.client.model.Exchange;
-import net.qtsurfer.api.client.model.InstrumentDetail;
-import net.qtsurfer.mcp.model.JobResult;
-import net.qtsurfer.mcp.model.JobStatus;
-import net.qtsurfer.mcp.service.BacktestingService;
+import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.model.InstrumentDetail;
+import com.qtsurfer.mcp.model.JobResult;
+import com.qtsurfer.mcp.model.JobStatus;
+import com.qtsurfer.mcp.service.BacktestingService;
 
 import java.util.List;
 import java.util.Map;

@@ -1,10 +1,10 @@
-package net.qtsurfer.mcp.tool;
+package com.qtsurfer.mcp.tool;
 
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
-import net.qtsurfer.mcp.service.BacktestingServiceStub;
+import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

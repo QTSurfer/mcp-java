@@ -1,7 +1,7 @@
-package net.qtsurfer.mcp;
+package com.qtsurfer.mcp;
 
 import io.modelcontextprotocol.spec.McpSchema.Tool;
-import net.qtsurfer.mcp.service.BacktestingServiceStub;
+import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
