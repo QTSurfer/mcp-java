@@ -88,7 +88,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           JAR=$(ls target/mcp-*.jar | grep -v 'original-' | head -1)
-          gh release upload "$GITHUB_REF_NAME" "$JAR#qtsurfer-mcp-java-${GITHUB_REF_NAME}.jar"
+          mv "$JAR" "qtsurfer-mcp-java-${GITHUB_REF_NAME}.jar"
+          gh release upload "$GITHUB_REF_NAME" "qtsurfer-mcp-java-${GITHUB_REF_NAME}.jar"
       - name: Upload native binaries
         env:
           GH_TOKEN: ${{ github.token }}

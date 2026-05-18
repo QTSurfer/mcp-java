@@ -54,8 +54,8 @@ Invoke-WebRequest -Uri https://github.com/QTSurfer/mcp-java/releases/latest/down
 Requires **JDK 21+**. Works on any platform.
 
 ```bash
-curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.2.0.jar
-java -jar qtsurfer-mcp-java-0.2.0.jar --help
+curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.2.1.jar
+java -jar qtsurfer-mcp-java-0.2.1.jar --help
 ```
 
 ### Docker
@@ -92,7 +92,7 @@ docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
     "qtsurfer": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.2.0.jar", "--url", "https://api.qtsurfer.com/v1"],
+      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.2.1.jar", "--url", "https://api.qtsurfer.com/v1"],
       "env": { "QTS_TOKEN": "<your-api-token>" }
     }
   }
