@@ -188,7 +188,7 @@
             Reachability metadata for MCP SDK ServiceLoader sits in
             src/main/resources/META-INF/native-image/. Common libs (logback, jackson,
             ssl) are covered by the GraalVM Reachability Metadata Repository.
-            Use Dockerfile.native to build for Linux x86_64 on claude-builds.
+            Use Dockerfile.native to build for Linux x86_64 on any host with GraalVM 21+.
         -->
         <profile>
             <id>native</id>

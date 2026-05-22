@@ -1,7 +1,7 @@
 # GraalVM native-image build of qtsurfer-mcp. Produces a single ELF binary
 # packaged in a distroless runtime image.
 #
-# Target platform: Linux x86_64 (build on claude-builds LXC or any GraalVM host).
+# Target platform: Linux x86_64 (build on any Linux host with GraalVM CE 21+).
 #   docker build --platform linux/amd64 -f Dockerfile.native \
 #     -t qtsurfer/mcp-native:0.2.0 .
 #
