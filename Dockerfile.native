@@ -3,10 +3,10 @@
 #
 # Target platform: Linux x86_64 (build on any Linux host with GraalVM CE 21+).
 #   docker build --platform linux/amd64 -f Dockerfile.native \
-#     -t qtsurfer/mcp-native:0.2.0 .
+#     -t qtsurfer/mcp-native:0.3.0 .
 #
 # To extract the binary without running the image:
-#   docker create --name mcp-native qtsurfer/mcp-native:0.2.0
+#   docker create --name mcp-native qtsurfer/mcp-native:0.3.0
 #   docker cp mcp-native:/app/qtsurfer-mcp ./qtsurfer-mcp
 #   docker rm mcp-native
 

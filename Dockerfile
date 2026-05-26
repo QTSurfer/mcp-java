@@ -3,14 +3,14 @@
 # a GraalVM native binary and package it in distroless/cc (~65 MB).
 #
 # Build:
-#   docker build -t qtsurfer/mcp-java:0.2.0 .
+#   docker build -t qtsurfer/mcp-java:0.3.0 .
 #
 # Run (MCP over stdio — pipe stdin/stdout):
-#   docker run -i -e QTS_TOKEN=<token> qtsurfer/mcp-java:0.2.0
+#   docker run -i -e QTSURFER_APIKEY=<token> qtsurfer/mcp-java:0.3.0
 #
 # Claude Code config (~/.claude.json):
 #   "command": "docker",
-#   "args": ["run", "-i", "--rm", "-e", "QTS_TOKEN", "qtsurfer/mcp-java:0.2.0"]
+#   "args": ["run", "-i", "--rm", "-e", "QTSURFER_APIKEY", "qtsurfer/mcp-java:0.3.0"]
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
