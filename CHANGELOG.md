@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-26
+
+### Changed (BREAKING)
+
+- **Auth model swapped from JWT-in-env to apikey-via-SDK.** The MCP server now
+  reads a long-lived API key from `QTSURFER_APIKEY` (or the new `--apikey`
+  flag) and uses [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)
+  0.5.0 `QTSurfer.auth(apikey)` to mint and transparently refresh a short-lived
+  JWT for the lifetime of the process. MCP servers can now run for days under a
+  desktop client without manual token rotation.
+- **Removed**: the `QTS_TOKEN` env var and the `--token` CLI flag. There is no
+  backwards-compatibility shim — adopters must update their MCP client config
+  to pass `QTSURFER_APIKEY` instead.
+- **Fail-fast startup**: if `QTSURFER_APIKEY` is missing or the initial JWT
+  exchange returns 401, the server logs a clear error to stderr and exits
+  non-zero before exposing any tools. Better than silently exposing tools that
+  all 401 on first call.
+- **Maven coordinates**: `<artifactId>` renamed from `mcp` to `mcp-java` to
+  match the GitHub repository name. This affects the on-disk JAR name
+  (`mcp-java-0.3.0.jar` instead of `mcp-0.2.1.jar`); distribution to end users
+  is unchanged — the GitHub Release asset is still
+  `qtsurfer-mcp-java-0.3.0.jar`.
+
+### Upgrade guide
+
+Replace `QTS_TOKEN` with `QTSURFER_APIKEY` in every MCP client config snippet:
+
+```diff
+ {
+   "mcpServers": {
+     "qtsurfer": {
+       "command": "/path/to/qtsurfer-mcp",
+-      "args": ["--url", "https://api.qtsurfer.com/v1"],
+-      "env": { "QTS_TOKEN": "<your-jwt>" }
++      "env": { "QTSURFER_APIKEY": "<your-api-key>" }
+     }
+   }
+ }
+```
+
+Issue a new long-lived API key via the QTSurfer web app — the server handles
+JWT minting and refresh for you.
+
 ## [0.2.0] — 2026-05-17
 
 ### Changed

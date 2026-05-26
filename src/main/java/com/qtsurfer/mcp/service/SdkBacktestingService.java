@@ -6,7 +6,7 @@ import com.qtsurfer.api.client.model.ResultMap;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
 import com.qtsurfer.api.sdk.BacktestRequest;
-import com.qtsurfer.api.sdk.QTSurfer;
+import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -23,8 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * {@link BacktestingService} backed by {@link QTSurfer} SDK. Job state is kept in memory
- * for the lifetime of the process — only jobs submitted in this session are visible.
+ * {@link BacktestingService} backed by an {@link AuthenticatedClient} (sdk-java). Job state
+ * is kept in memory for the lifetime of the process — only jobs submitted in this session
+ * are visible.
+ *
+ * <p>The {@code AuthenticatedClient} owns the apikey → JWT exchange and transparently
+ * refreshes the token on 401, so this service never touches the bearer token directly.
  *
  * <p>Submit flow: compile → prepare+execute (async). {@link #submitBacktest} blocks only on
  * compilation (fast), then continues prepare+execute in the background. The returned job ID can
@@ -34,7 +38,7 @@ public class SdkBacktestingService implements BacktestingService {
 
   private static final Logger log = LoggerFactory.getLogger(SdkBacktestingService.class);
 
-  private final QTSurfer qts;
+  private final AuthenticatedClient qts;
   private final String baseUrl;
   private final Map<String, SessionJob> jobs = new ConcurrentHashMap<>();
 
@@ -61,7 +65,7 @@ public class SdkBacktestingService implements BacktestingService {
     }
   }
 
-  public SdkBacktestingService(QTSurfer qts, String baseUrl) {
+  public SdkBacktestingService(AuthenticatedClient qts, String baseUrl) {
     this.qts = qts;
     this.baseUrl = baseUrl;
   }
