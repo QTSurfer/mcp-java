@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.qtsurfer</groupId>
-    <artifactId>mcp</artifactId>
-    <version>0.2.1</version>
+    <artifactId>mcp-java</artifactId>
+    <version>0.3.0</version>
     <packaging>jar</packaging>
     <name>qtsurfer-mcp-java</name>
 
@@ -34,7 +34,7 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mcp.version>1.1.2</mcp.version>
-        <sdk.version>0.4.1</sdk.version>
+        <sdk.version>0.5.0</sdk.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.version>1.5.11</logback.version>
         <junit.version>5.11.4</junit.version>

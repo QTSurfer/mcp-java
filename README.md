@@ -13,13 +13,22 @@
 
 ---
 
+> ### Breaking change in 0.3.0
+>
+> Auth swapped from short-lived JWT (`QTS_TOKEN`) to long-lived API key
+> (`QTSURFER_APIKEY`). The MCP server now mints and refreshes JWTs for you
+> via `sdk-java` 0.5.0, so the process can run for days under a desktop
+> client without manual token rotation. See the
+> [`0.3.0` changelog](CHANGELOG.md#030--2026-05-26) for the migration diff.
+
 Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, explore instruments, submit a strategy, and get full execution metrics — all without leaving the chat.
 
 - **Stdio transport** — compatible with Claude Code, OpenAI Codex, and any MCP client.
 - **Native binary** — ~17 ms startup, ~44 MB, no JVM required. Available for Linux, macOS, and Windows.
 - **Fat JAR fallback** — single file, runs anywhere with JDK 21+.
 - **Docker** — `docker run -i` for containerised deployments (`eclipse-temurin:21-jre-alpine`, ~230 MB).
-- **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — compile → prepare → execute orchestration with retry and cancellation.
+- **Long-lived API key, refresh handled for you** — drop `QTSURFER_APIKEY` once in your MCP client config; `sdk-java` exchanges it for a JWT on startup and refreshes transparently for the lifetime of the process.
+- **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — auth, compile → prepare → execute orchestration with retry and cancellation.
 
 ## Installation
 
@@ -54,8 +63,8 @@ Invoke-WebRequest -Uri https://github.com/QTSurfer/mcp-java/releases/latest/down
 Requires **JDK 21+**. Works on any platform.
 
 ```bash
-curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.2.1.jar
-java -jar qtsurfer-mcp-java-0.2.1.jar --help
+curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.3.0.jar
+java -jar qtsurfer-mcp-java-0.3.0.jar --help
 ```
 
 ### Docker
@@ -64,10 +73,22 @@ java -jar qtsurfer-mcp-java-0.2.1.jar --help
 docker pull ghcr.io/qtsurfer/mcp-java:latest
 
 # Run (MCP over stdio — pipe stdin/stdout)
-docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
+docker run -i --rm -e QTSURFER_APIKEY=<your-api-key> ghcr.io/qtsurfer/mcp-java:latest
 ```
 
 ## Configuration
+
+### Authentication
+
+Generate a long-lived API key in the QTSurfer web app, then pass it to the
+MCP server via the `QTSURFER_APIKEY` environment variable (or `--apikey`).
+The server exchanges the API key for a short-lived JWT on startup and
+refreshes it transparently for the lifetime of the process — no manual
+rotation required.
+
+If `QTSURFER_APIKEY` is missing or the initial exchange returns 401, the
+server exits non-zero with a clear error before exposing any tools (your
+MCP client UI will surface the failure).
 
 ### Claude Code (`~/.claude.json`)
 
@@ -78,8 +99,7 @@ docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
     "qtsurfer": {
       "type": "stdio",
       "command": "/path/to/qtsurfer-mcp",
-      "args": ["--url", "https://api.qtsurfer.com/v1"],
-      "env": { "QTS_TOKEN": "<your-api-token>" }
+      "env": { "QTSURFER_APIKEY": "<your-api-key>" }
     }
   }
 }
@@ -92,8 +112,8 @@ docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
     "qtsurfer": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.2.1.jar", "--url", "https://api.qtsurfer.com/v1"],
-      "env": { "QTS_TOKEN": "<your-api-token>" }
+      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.3.0.jar"],
+      "env": { "QTSURFER_APIKEY": "<your-api-key>" }
     }
   }
 }
@@ -106,7 +126,7 @@ docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
     "qtsurfer": {
       "type": "stdio",
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "QTS_TOKEN", "ghcr.io/qtsurfer/mcp-java:latest"]
+      "args": ["run", "-i", "--rm", "-e", "QTSURFER_APIKEY", "ghcr.io/qtsurfer/mcp-java:latest"]
     }
   }
 }
@@ -117,10 +137,9 @@ docker run -i --rm -e QTS_TOKEN=<token> ghcr.io/qtsurfer/mcp-java:latest
 ```toml
 [mcp_servers.qtsurfer]
 command = "/path/to/qtsurfer-mcp"
-args = ["--url", "https://api.qtsurfer.com/v1"]
 
 [mcp_servers.qtsurfer.env]
-QTS_TOKEN = "<your-api-token>"
+QTSURFER_APIKEY = "<your-api-key>"
 ```
 
 ## Usage
@@ -130,11 +149,12 @@ Usage: qtsurfer-mcp [options]        # native binary
        java -jar qtsurfer-mcp-java.jar [options]  # fat JAR
 
 Options:
-  --url   <base-url>  API base URL (default: https://api.qtsurfer.com/v1)
-                      Override with QTS_URL env var
-  --token <jwt>       Bearer token (default: QTS_TOKEN env var)
-  --stub              Use in-memory stub (no backend required)
-  --help              Print this message and exit
+  --url    <base-url>  API base URL (default: https://api.qtsurfer.com/v1)
+                       Override with QTS_URL env var
+  --apikey <key>       Long-lived API key
+                       (default: QTSURFER_APIKEY env var)
+  --stub               Use in-memory stub (no backend required)
+  --help               Print this message and exit
 
 MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 ```
@@ -209,7 +229,7 @@ git clone https://github.com/QTSurfer/mcp-java.git
 cd mcp-java
 
 # Fat JAR
-mvn package -DskipTests          # → target/mcp-*.jar
+mvn package -DskipTests          # → target/mcp-java-*.jar
 
 # Unit + integration tests
 mvn verify

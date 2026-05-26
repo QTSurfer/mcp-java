@@ -24,7 +24,7 @@ import java.io.OutputStream;
 public final class McpServerRunner {
 
   static final String SERVER_NAME = "qtsurfer-mcp";
-  static final String SERVER_VERSION = "0.2.1";
+  static final String SERVER_VERSION = "0.3.0";
 
   private static final Logger log = LoggerFactory.getLogger(McpServerRunner.class);
 
