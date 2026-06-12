@@ -26,7 +26,7 @@ class McpToolsTest {
   @BeforeEach
   void setUp() {
     service = new BacktestingServiceStub();
-    tools = McpTools.build(service);
+    tools = McpTools.build(service, "https://api.qtsurfer.net/v1");
   }
 
   private SyncToolSpecification tool(String name) {
@@ -48,15 +48,26 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFiveTools() {
-    assertThat(tools).hasSize(5);
+  void registersExactlySixTools() {
+    assertThat(tools).hasSize(6);
   }
 
   @Test
   void toolNamesAreCorrect() {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
-        "list_exchanges", "list_instruments", "submit_backtest", "get_job_status", "list_jobs");
+        "version", "list_exchanges", "list_instruments", "submit_backtest", "get_job_status", "list_jobs");
+  }
+
+  // ---- version ------------------------------------------------------------
+
+  @Test
+  void versionReturnsServerNameAndApiUrl() {
+    var result = call("version", Map.of());
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(result))
+        .contains("qtsurfer-mcp")
+        .contains("api.qtsurfer.net");
   }
 
   @Test

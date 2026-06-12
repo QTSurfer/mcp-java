@@ -21,6 +21,7 @@
     {"glob": "META-INF/services/io.modelcontextprotocol.json.schema.JsonSchemaValidatorSupplier"},
     {"glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"},
     {"glob": "META-INF/services/ch.qos.logback.classic.spi.Configurator"},
-    {"glob": "logback.xml"}
+    {"glob": "logback.xml"},
+    {"glob": "build.properties"}
   ]
 }

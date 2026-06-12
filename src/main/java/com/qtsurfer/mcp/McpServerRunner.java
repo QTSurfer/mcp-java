@@ -23,19 +23,19 @@ import java.io.OutputStream;
  */
 public final class McpServerRunner {
 
-  static final String SERVER_NAME = "qtsurfer-mcp";
-  static final String SERVER_VERSION = "0.3.0";
+  public static final String SERVER_NAME = "qtsurfer-mcp";
+  public static final String SERVER_VERSION = BuildInfo.VERSION;
 
   private static final Logger log = LoggerFactory.getLogger(McpServerRunner.class);
 
   private final McpSyncServer server;
 
-  public McpServerRunner(BacktestingService backtestingService) {
-    this(System.in, System.out, backtestingService);
+  public McpServerRunner(BacktestingService backtestingService, String apiUrl) {
+    this(System.in, System.out, backtestingService, apiUrl);
   }
 
   /** Testable constructor — inject streams to avoid touching real stdin/stdout. */
-  McpServerRunner(InputStream in, OutputStream out, BacktestingService backtestingService) {
+  McpServerRunner(InputStream in, OutputStream out, BacktestingService backtestingService, String apiUrl) {
     McpJsonMapper mapper = McpJsonDefaults.getMapper();
     McpServerTransportProvider transport = new StdioServerTransportProvider(mapper, in, out);
     server = McpServer.sync(transport)
@@ -46,7 +46,7 @@ public final class McpServerRunner {
                 + "then call submit_backtest with your strategy code. "
                 + "Poll results with get_job_status.")
         .capabilities(ServerCapabilities.builder().tools(false).build())
-        .tools(McpTools.build(backtestingService))
+        .tools(McpTools.build(backtestingService, apiUrl))
         .build();
     log.info("McpServerRunner ready: {} {}", SERVER_NAME, SERVER_VERSION);
   }

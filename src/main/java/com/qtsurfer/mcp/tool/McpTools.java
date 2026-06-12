@@ -4,6 +4,7 @@ import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
+import com.qtsurfer.mcp.McpServerRunner;
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.mcp.model.JobResult;
@@ -24,13 +25,27 @@ public final class McpTools {
 
   private McpTools() {}
 
-  public static List<SyncToolSpecification> build(BacktestingService service) {
+  public static List<SyncToolSpecification> build(BacktestingService service, String apiUrl) {
     return List.of(
+        version(apiUrl),
         listExchanges(service),
         listInstruments(service),
         submitBacktest(service),
         getJobStatus(service),
         listJobs(service));
+  }
+
+  // ---- version ------------------------------------------------------------
+
+  private static SyncToolSpecification version(String apiUrl) {
+    Tool tool = Tool.builder()
+        .name("version")
+        .description("Return the qtsurfer-mcp server version and the API endpoint in use.")
+        .inputSchema(emptySchema())
+        .build();
+    String info = McpServerRunner.SERVER_NAME + " " + McpServerRunner.SERVER_VERSION
+        + "\nAPI: " + apiUrl;
+    return new SyncToolSpecification(tool, (exchange, request) -> text(info));
   }
 
   // ---- list_exchanges -----------------------------------------------------

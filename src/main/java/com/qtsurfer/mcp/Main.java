@@ -77,7 +77,7 @@ public class Main {
     McpServerRunner runner;
     if (stub) {
       log.info("Starting with in-memory stub (no backend connection)");
-      runner = new McpServerRunner(new BacktestingServiceStub());
+      runner = new McpServerRunner(new BacktestingServiceStub(), "stub");
     } else {
       if (apikey == null || apikey.isBlank()) {
         System.err.println(
@@ -98,7 +98,7 @@ public class Main {
             "       Verify QTSURFER_APIKEY is a valid, unrevoked API key for " + url);
         return 3;
       }
-      runner = new McpServerRunner(new SdkBacktestingService(qts, url));
+      runner = new McpServerRunner(new SdkBacktestingService(qts, url), url);
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(runner::close, "mcp-shutdown"));
@@ -119,9 +119,25 @@ public class Main {
   }
 
   private static void printUsage() {
-    System.out.println("qtsurfer-mcp-java " + McpServerRunner.SERVER_VERSION);
+    System.out.print(
+        "\n"
+        + "    ██████    ███████████  █████████                          ██████                    \n"
+        + "  ███░░░░███ ░█░░░███░░░█ ███░░░░░███                        ███░░███                   \n"
+        + " ███    ░░███░   ░███  ░ ░███    ░░░  █████ ████ ████████   ░███ ░░░   ██████  ████████ \n"
+        + "░███     ░███    ░███    ░░█████████ ░░███ ░███ ░░███░░███ ███████    ███░░███░░███░░███\n"
+        + "░███   ██░███    ░███     ░░░░░░░░███ ░███ ░███  ░███ ░░░ ░░░███░    ░███████  ░███ ░░░ \n"
+        + "░░███ ░░████     ░███     ███    ░███ ░███ ░███  ░███       ░███     ░███░░░   ░███     \n"
+        + " ░░░██████░██    █████   ░░█████████  ░░████████ █████      █████    ░░██████  █████    \n"
+        + "   ░░░░░░ ░░    ░░░░░     ░░░░░░░░░    ░░░░░░░░ ░░░░░      ░░░░░      ░░░░░░  ░░░░░     \n"
+        + "\n");
+    String commit = BuildInfo.GIT_COMMIT.equals("dev") ? "" : "-" + BuildInfo.GIT_COMMIT;
+    String buildTime = BuildInfo.BUILD_TIME.isEmpty() ? "" : "  build: " + BuildInfo.BUILD_TIME;
+    System.out.println(McpServerRunner.SERVER_NAME + " " + McpServerRunner.SERVER_VERSION
+        + commit + buildTime);
     System.out.println();
-    System.out.println("Usage: java -jar qtsurfer-mcp-java.jar [options]");
+    System.out.println("Usage:");
+    System.out.println("  java -jar qtsurfer-mcp-java.jar [options]   (fat JAR)");
+    System.out.println("  ./qtsurfer-mcp [options]                     (native binary)");
     System.out.println();
     System.out.println("Options:");
     System.out.println("  --url    <base-url>  API base URL (default: " + DEFAULT_URL + ")");

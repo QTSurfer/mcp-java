@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-06-12
+
+### Added ✨
+
+- **`version` MCP tool** — returns the server version and API endpoint in use. Useful for diagnosing which build is running inside a client session.
+- **Installer scripts** — one-liner install for all platforms:
+  - `install.sh` (Linux · macOS): detects OS/arch, downloads the native binary or fat JAR, removes macOS quarantine automatically. Falls back to fat JAR on Intel Mac and Linux ARM64; offers to install Java 21 via SDKMAN if missing.
+  - `install.ps1` (Windows): downloads `qtsurfer-mcp-windows-amd64.exe`, adds to user PATH; offers to install Java 21 via `winget` on unsupported architectures.
+- **Versionless fat JAR asset** — each release now includes `qtsurfer-mcp-java.jar` alongside the versioned `qtsurfer-mcp-java-x.y.z.jar`, so the installation URL never needs updating.
+- **`--help` banner** — QTSurfer ASCII banner + version, git commit hash, and build timestamp printed on `--help`.
+
+### Fixed 🐛
+
+- **Native binary TLS trust on macOS** — GraalVM native images embed CA certificates at compile time and cannot chase AIA URLs at runtime. The CI build now syncs OS root CAs into the GraalVM JDK and explicitly downloads any intermediate CAs omitted by the server's TLS handshake (via AIA CA Issuers), so the baked-in trust store is complete. Fixes `auth() failed: HTTP 0` errors on macOS Apple Silicon against hosts using Google Trust Services intermediates.
+
+### Changed 🔄
+
+- **Version sourced from `build.properties`** — the server version is no longer a hardcoded string in `McpServerRunner`. It is read from a filtered `build.properties` resource populated by Maven (`${project.version}`) and `git-commit-id-maven-plugin` (`git.commit.id.abbrev`, `git.build.time`). Falls back to `"dev"` when running from IDE sources without a Maven build.
+
 ## [0.3.0] — 2026-05-26
 
 ### Changed (BREAKING)

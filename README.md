@@ -13,14 +13,6 @@
 
 ---
 
-> ### Breaking change in 0.3.0
->
-> Auth swapped from short-lived JWT (`QTS_TOKEN`) to long-lived API key
-> (`QTSURFER_APIKEY`). The MCP server now mints and refreshes JWTs for you
-> via `sdk-java` 0.5.0, so the process can run for days under a desktop
-> client without manual token rotation. See the
-> [`0.3.0` changelog](CHANGELOG.md#030--2026-05-26) for the migration diff.
-
 Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, explore instruments, submit a strategy, and get full execution metrics — all without leaving the chat.
 
 - **Stdio transport** — compatible with Claude Code, OpenAI Codex, and any MCP client.
@@ -32,39 +24,41 @@ Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, ex
 
 ## Installation
 
-### Native binary (recommended)
-
-Pre-built binaries are attached to every [GitHub Release](https://github.com/QTSurfer/mcp-java/releases/latest):
-
-| Platform | Asset |
-|----------|-------|
-| Linux x86_64 | `qtsurfer-mcp-linux-amd64` |
-| macOS arm64 (Apple Silicon) | `qtsurfer-mcp-macos-arm64` |
-| Windows x86_64 | `qtsurfer-mcp-windows-amd64.exe` |
-
-Intel Mac users: use the [fat JAR](#fat-jar) with JDK 21+.
+### Linux · macOS
 
 ```bash
-# Linux
-curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-linux-amd64
-chmod +x qtsurfer-mcp
-
-# macOS Apple Silicon
-curl -Lo qtsurfer-mcp https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-macos-arm64
-chmod +x qtsurfer-mcp
-
-# Windows (PowerShell)
-Invoke-WebRequest -Uri https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-windows-amd64.exe `
-  -OutFile qtsurfer-mcp.exe
+curl -fsSL https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.sh | bash
 ```
 
-### Fat JAR
+The installer detects your platform and picks the right delivery:
 
-Requires **JDK 21+**. Works on any platform.
+| Platform | What gets installed |
+|---|---|
+| Linux x86_64 | native binary |
+| macOS arm64 (Apple Silicon) | native binary (quarantine flag removed automatically) |
+| macOS x86_64 (Intel) · Linux arm64 | fat JAR + wrapper script (Java 21+ required; installer offers to install via SDKMAN if missing) |
+
+Pin a version or override the destination:
 
 ```bash
-curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java-0.3.0.jar
-java -jar qtsurfer-mcp-java-0.3.0.jar --help
+VERSION=0.3.1 INSTALL_DIR=~/.local/bin \
+  curl -fsSL https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.sh | bash
+```
+
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.ps1 | iex
+```
+
+Installs the native `qtsurfer-mcp-windows-amd64.exe` to `%LOCALAPPDATA%\qtsurfer-mcp` and adds it to your user PATH.  
+On unsupported architectures it falls back to the fat JAR and offers to install Java 21 via `winget` if missing.
+
+### Fat JAR (any platform, JDK 21+)
+
+```bash
+curl -LO https://github.com/QTSurfer/mcp-java/releases/latest/download/qtsurfer-mcp-java.jar
+java -jar qtsurfer-mcp-java.jar --help
 ```
 
 ### Docker
@@ -112,7 +106,7 @@ MCP client UI will surface the failure).
     "qtsurfer": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/path/to/qtsurfer-mcp-java-0.3.0.jar"],
+      "args": ["-jar", "/path/to/qtsurfer-mcp-java.jar"],
       "env": { "QTSURFER_APIKEY": "<your-api-key>" }
     }
   }

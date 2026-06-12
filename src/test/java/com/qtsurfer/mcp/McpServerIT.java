@@ -23,7 +23,8 @@ class McpServerIT {
     runner = new McpServerRunner(
         new java.io.ByteArrayInputStream(new byte[0]),
         java.io.OutputStream.nullOutputStream(),
-        new BacktestingServiceStub());
+        new BacktestingServiceStub(),
+        "stub");
   }
 
   @AfterEach
@@ -37,15 +38,15 @@ class McpServerIT {
   }
 
   @Test
-  void registersExactlyFiveTools() {
-    assertThat(runner.getServer().listTools()).hasSize(5);
+  void registersExactlySixTools() {
+    assertThat(runner.getServer().listTools()).hasSize(6);
   }
 
   @Test
   void allExpectedToolsPresent() {
     List<String> names = runner.getServer().listTools().stream().map(Tool::name).toList();
     assertThat(names).containsExactlyInAnyOrder(
-        "list_exchanges", "list_instruments", "submit_backtest", "get_job_status", "list_jobs");
+        "version", "list_exchanges", "list_instruments", "submit_backtest", "get_job_status", "list_jobs");
   }
 
   @Test
