@@ -107,7 +107,7 @@ resolve_install_dir() {
 install_native() {
   local version=$1 asset=$2 dest=$3 os=$4
   local url="https://github.com/$REPO/releases/download/$version/$asset"
-  info "Downloading $asset $version…"
+  info "Downloading $asset $version..."
   curl -fsSL "$url" -o "$dest"
   chmod +x "$dest"
   if [[ "$os" == "macos" ]]; then
@@ -125,7 +125,7 @@ install_jar() {
   local wrapper="$bin_dir/$BINARY"
 
   mkdir -p "$lib_dir"
-  info "Downloading fat JAR $version…"
+  info "Downloading fat JAR $version..."
   curl -fsSL "$url" -o "$jar_dest"
   success "JAR saved → $jar_dest"
 
@@ -143,13 +143,13 @@ install_java_sdkman() {
   local sdkman_init="$HOME/.sdkman/bin/sdkman-init.sh"
 
   if [[ ! -f "$sdkman_init" ]]; then
-    info "Installing SDKMAN…"
+    info "Installing SDKMAN..."
     curl -fsSL "https://get.sdkman.io" | bash
   fi
 
   # shellcheck source=/dev/null
   source "$sdkman_init"
-  info "Installing Java 21 (Temurin) via SDKMAN…"
+  info "Installing Java 21 (Temurin) via SDKMAN..."
   sdk install java 21-tem </dev/tty
   success "Java 21 installed via SDKMAN."
   # Re-source so find_java picks up the new PATH
