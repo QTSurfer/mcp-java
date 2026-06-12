@@ -94,6 +94,11 @@ jobs:
               && echo "Imported intermediate CA: ${subj}" \
               || echo "Intermediate already trusted: ${subj}"
           fi
+      - name: Set up MSVC (required by GraalVM native-image on Windows)
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
       - name: Build native binary
         run: mvn -B -Pnative -DskipTests package native:compile-no-fork
       - name: Upload native binary
