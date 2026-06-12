@@ -1,7 +1,8 @@
 {
   "resources": {
     "includes": [
-      {"pattern": "\\Qbuild.properties\\E"}
+      {"pattern": "\\Qbuild.properties\\E"},
+      {"pattern": "\\Qtls/google-we1.pem\\E"}
     ]
   }
 }

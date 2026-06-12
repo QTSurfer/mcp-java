@@ -9,6 +9,15 @@ import com.qtsurfer.mcp.service.SdkBacktestingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+
 /**
  * Entry point for the QTSurfer MCP server.
  *
@@ -65,6 +74,7 @@ public class Main {
    * killing the JVM.
    */
   static int run(String[] args) {
+    injectBundledIntermediates();
     if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
       printUsage();
       return 0;
@@ -116,6 +126,68 @@ public class Main {
     authCount.incrementAndGet();
     AuthOptions opts = AuthOptions.builder().baseUrl(baseUrl).build();
     return QTSurfer.auth(apikey, opts);
+  }
+
+  /**
+   * GraalVM native images cannot AIA-chase at runtime. When the server omits an
+   * intermediate CA from its TLS chain, the handshake fails with HTTP 0.
+   * This method loads bundled intermediate certs and adds them as trust anchors
+   * in a composite SSLContext set as the JVM default, so HttpClient picks them up.
+   */
+  private static void injectBundledIntermediates() {
+    try {
+      KeyStore extras = KeyStore.getInstance(KeyStore.getDefaultType());
+      extras.load(null, null);
+      int added = 0;
+      for (String name : new String[]{"google-we1"}) {
+        try (InputStream in = Main.class.getResourceAsStream("/tls/" + name + ".pem")) {
+          if (in == null) continue;
+          X509Certificate cert = (X509Certificate)
+              CertificateFactory.getInstance("X.509").generateCertificate(in);
+          extras.setCertificateEntry(name, cert);
+          added++;
+        }
+      }
+      if (added == 0) return;
+
+      TrustManagerFactory platformTmf = TrustManagerFactory.getInstance(
+          TrustManagerFactory.getDefaultAlgorithm());
+      platformTmf.init((KeyStore) null);
+      X509TrustManager platformTm = (X509TrustManager) platformTmf.getTrustManagers()[0];
+
+      TrustManagerFactory extrasTmf = TrustManagerFactory.getInstance(
+          TrustManagerFactory.getDefaultAlgorithm());
+      extrasTmf.init(extras);
+      X509TrustManager extrasTm = (X509TrustManager) extrasTmf.getTrustManagers()[0];
+
+      SSLContext ctx = SSLContext.getInstance("TLS");
+      ctx.init(null, new TrustManager[]{new X509TrustManager() {
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType)
+            throws java.security.cert.CertificateException {
+          platformTm.checkClientTrusted(chain, authType);
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType)
+            throws java.security.cert.CertificateException {
+          try {
+            platformTm.checkServerTrusted(chain, authType);
+          } catch (java.security.cert.CertificateException e) {
+            extrasTm.checkServerTrusted(chain, authType);
+          }
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+          return platformTm.getAcceptedIssuers();
+        }
+      }}, null);
+      SSLContext.setDefault(ctx);
+      log.debug("Injected {} bundled intermediate CA(s) into SSLContext", added);
+    } catch (Exception e) {
+      log.warn("Failed to inject bundled TLS intermediates: {}", e.getMessage());
+    }
   }
 
   private static void printUsage() {

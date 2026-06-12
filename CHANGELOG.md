@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-06-13
+
+### Fixed 🐛
+
+- **Native binary TLS on macOS/Linux: `auth() failed: HTTP 0`** — `api.qtsurfer.net` omits the WE1 intermediate CA from its TLS handshake. GraalVM native images cannot AIA-chase at runtime, causing the TLS handshake to fail silently. The WE1 certificate (Google Trust Services, valid until 2029) is now bundled as a classpath resource and injected as a trust anchor at startup via a composite `X509TrustManager` set as the JVM default `SSLContext`, before the first outbound connection. The fat JAR is unaffected (JVM AIA-chases automatically).
+
 ## [0.3.1] — 2026-06-12
 
 ### Added ✨

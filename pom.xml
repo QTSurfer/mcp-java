@@ -5,7 +5,7 @@
 
     <groupId>com.qtsurfer</groupId>
     <artifactId>mcp-java</artifactId>
-    <version>0.3.1</version>
+    <version>0.3.2</version>
     <packaging>jar</packaging>
     <name>qtsurfer-mcp-java</name>
 
