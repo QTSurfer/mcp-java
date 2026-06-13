@@ -64,12 +64,23 @@ jobs:
           # Exercise the MCP server end-to-end without a backend. This is the
           # real check: a native image missing reflection/serialization metadata
           # starts fine but crashes here (UnsupportedFeatureError / HTTP 0).
+          #
+          # The stdio server answers as messages arrive but never exits on its
+          # own, so: feed the requests through a pipe kept open by a trailing
+          # sleep (an immediate EOF makes it close before replying), then kill
+          # it by name. `timeout` is avoided — macOS runners don't ship it.
           echo "== MCP stub session (initialize + tools/list) =="
-          init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
-          inited='{"jsonrpc":"2.0","method":"notifications/initialized"}'
-          list='{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-          { printf '%s\n' "$init" "$inited" "$list"; sleep 5; } \
-            | "$BIN" --stub > mcp.out 2> mcp.err || true
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' > session.jsonl
+          ( cat session.jsonl; sleep 6 ) | "$BIN" --stub > mcp.out 2> mcp.err &
+          sleep 9
+          if command -v taskkill >/dev/null 2>&1; then
+            taskkill //F //IM qtsurfer-mcp.exe >/dev/null 2>&1 || true
+          else
+            pkill -f qtsurfer-mcp 2>/dev/null || true
+          fi
           cat mcp.out
           grep -q '"list_exchanges"' mcp.out \
             || { echo "::error::tools/list did not return the expected tools"; cat mcp.err; exit 1; }
