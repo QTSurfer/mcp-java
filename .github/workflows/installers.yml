@@ -5,6 +5,10 @@ name: Installers
 # published release validates both the script and the release assets.
 on:
   push:
+    # branches: keeps tag pushes from triggering this — GitHub ignores the
+    # paths filter on tag events, which would otherwise run against a release
+    # that may not exist yet.
+    branches: [main]
     paths:
       - install.sh
       - install.ps1
