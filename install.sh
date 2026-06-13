@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # install.sh — qtsurfer-mcp installer for Linux and macOS
+# Docs: https://github.com/QTSurfer/mcp-java#installation
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.sh | bash

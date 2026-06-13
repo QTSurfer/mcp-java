@@ -1,4 +1,5 @@
 # install.ps1 — qtsurfer-mcp installer for Windows
+# Docs: https://github.com/QTSurfer/mcp-java#installation
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.ps1 | iex
