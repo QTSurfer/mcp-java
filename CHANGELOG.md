@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-06-13
+
+### Fixed 🐛
+
+- **Native binary was non-functional beyond `--help`** — root cause of the `auth() failed: HTTP 0` errors finally identified: it was never TLS. GraalVM native images need reflection metadata for every Jackson-(de)serialized type; without it, deserializing the auth response throws `InvalidDefinitionException` (an `IOException` subclass), which the OpenAPI client wraps as `ApiException` with code 0. The MCP layer was equally broken: `McpSchema` record components were not registered, so even a stdio `initialize` crashed with `UnsupportedFeatureError`.
+  - Added `reflect-config.json` generated with the GraalVM tracing agent across full MCP sessions (stub + live API), plus wholesale registration of all `McpSchema$*`, `api.client.model.*`, and `mcp.model.*` types.
+  - Replaced `reachability-metadata.json` (the unified format, ignored by GraalVM for JDK 21) with classic-format `reflect-config.json`/`resource-config.json`, which all GraalVM versions process.
+  - `logback.xml` is now included in the image: native binary logs went to **stdout** with the default pattern, corrupting the MCP stdio protocol; they now go to stderr as configured.
+- Verified end-to-end on macOS arm64: authentication, `tools/list`, and live tool calls against the production API.
+
 ## [0.3.2] — 2026-06-13
 
 ### Fixed 🐛

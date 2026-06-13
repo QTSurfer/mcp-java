@@ -47,53 +47,6 @@ jobs:
           java-version: '21'
           distribution: 'graalvm'
           cache: 'maven'
-      - name: Sync OS CA certificates into GraalVM JDK
-        shell: bash
-        run: |
-          CACERTS="$JAVA_HOME/lib/security/cacerts"
-
-          # 1. Import root CAs from the OS trust store
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            security export -t certs -f pemseq \
-              -k /System/Library/Keychains/SystemRootCertificates.keychain \
-              > /tmp/os-roots.pem
-          elif [[ "$RUNNER_OS" == "Linux" ]]; then
-            cat /etc/ssl/certs/*.pem > /tmp/os-roots.pem 2>/dev/null || true
-          fi
-          if [[ -f /tmp/os-roots.pem ]]; then
-            awk '/-----BEGIN CERTIFICATE-----/{n++; close(f); f="/tmp/ca-"n".pem"} {print > f}' \
-              /tmp/os-roots.pem
-            imported=0
-            for f in /tmp/ca-*.pem; do
-              [[ -s "$f" ]] || continue
-              hash=$(openssl x509 -noout -hash -in "$f" 2>/dev/null) || continue
-              keytool -importcert -noprompt -trustcacerts \
-                -alias "os-root-${hash}" \
-                -keystore "$CACERTS" -storepass changeit \
-                -file "$f" 2>/dev/null && ((imported++)) || true
-            done
-            echo "Imported $imported root CAs from OS"
-          fi
-
-          # 2. Fetch any intermediate CAs the server omits from its TLS chain (via AIA).
-          #    GraalVM native images cannot chase AIA at runtime; bake the intermediates in.
-          AIA_URL=$(echo | openssl s_client -connect api.qtsurfer.net:443 \
-            -servername api.qtsurfer.net 2>/dev/null \
-            | openssl x509 -noout -text 2>/dev/null \
-            | grep "CA Issuers" | grep -o 'http[^ ]*' | head -1)
-          if [[ -n "$AIA_URL" ]]; then
-            curl -sf "$AIA_URL" -o /tmp/intermediate.der
-            openssl x509 -inform der -in /tmp/intermediate.der -out /tmp/intermediate.pem 2>/dev/null \
-              || cp /tmp/intermediate.der /tmp/intermediate.pem
-            hash=$(openssl x509 -noout -hash -in /tmp/intermediate.pem 2>/dev/null)
-            subj=$(openssl x509 -noout -subject -in /tmp/intermediate.pem 2>/dev/null)
-            keytool -importcert -noprompt -trustcacerts \
-              -alias "intermediate-${hash}" \
-              -keystore "$CACERTS" -storepass changeit \
-              -file /tmp/intermediate.pem 2>/dev/null \
-              && echo "Imported intermediate CA: ${subj}" \
-              || echo "Intermediate already trusted: ${subj}"
-          fi
       - name: Set up MSVC (required by GraalVM native-image on Windows)
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1

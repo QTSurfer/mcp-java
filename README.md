@@ -41,7 +41,7 @@ The installer detects your platform and picks the right delivery:
 Pin a version or override the destination:
 
 ```bash
-VERSION=0.3.2 INSTALL_DIR=~/.local/bin \
+VERSION=0.3.3 INSTALL_DIR=~/.local/bin \
   curl -fsSL https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.sh | bash
 ```
 

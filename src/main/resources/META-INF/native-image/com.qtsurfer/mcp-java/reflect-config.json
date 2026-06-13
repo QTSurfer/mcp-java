@@ -1,0 +1,1890 @@
+[
+  {
+    "name": "apple.security.AppleProvider",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.encoder.PatternLayoutEncoder",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.joran.SerializedModelConfigurator",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.DateConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.LevelConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.LineSeparatorConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.LoggerConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.MessageConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.pattern.ThreadConverter",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.classic.spi.LogbackServiceProvider"
+  },
+  {
+    "name": "ch.qos.logback.classic.util.DefaultJoranConfigurator",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.core.ConsoleAppender",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      },
+      {
+        "name": "setTarget",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.core.OutputStreamAppender",
+    "methods": [
+      {
+        "name": "setEncoder",
+        "parameterTypes": [
+          "ch.qos.logback.core.encoder.Encoder"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.core.encoder.Encoder"
+  },
+  {
+    "name": "ch.qos.logback.core.encoder.LayoutWrappingEncoder",
+    "methods": [
+      {
+        "name": "setParent",
+        "parameterTypes": [
+          "ch.qos.logback.core.spi.ContextAware"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.core.pattern.PatternLayoutEncoderBase",
+    "methods": [
+      {
+        "name": "setPattern",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ch.qos.logback.core.spi.ContextAware"
+  },
+  {
+    "name": "com.ethlo.time.ITU"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.deser.BeanDeserializerModifier[]"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.deser.Deserializers[]"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.deser.KeyDeserializers[]"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.deser.ValueInstantiators[]"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.ext.Java7SupportImpl",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.ser.BeanSerializerModifier[]"
+  },
+  {
+    "name": "com.fasterxml.jackson.databind.ser.Serializers[]"
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AbstractOpenApiSchema",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AcceptedJob",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AuthTokenError",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AuthTokenError$CodeEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AuthTokenResponse",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      },
+      {
+        "name": "setAccessToken",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      },
+      {
+        "name": "setExpiresIn",
+        "parameterTypes": [
+          "java.lang.Integer"
+        ]
+      },
+      {
+        "name": "setScopes",
+        "parameterTypes": [
+          "java.util.List"
+        ]
+      },
+      {
+        "name": "setTier",
+        "parameterTypes": [
+          "com.qtsurfer.api.client.model.AuthTokenResponse$TierEnum"
+        ]
+      },
+      {
+        "name": "setTokenType",
+        "parameterTypes": [
+          "com.qtsurfer.api.client.model.AuthTokenResponse$TokenTypeEnum"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AuthTokenResponse$TierEnum",
+    "methods": [
+      {
+        "name": "fromValue",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.AuthTokenResponse$TokenTypeEnum",
+    "methods": [
+      {
+        "name": "fromValue",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.BacktestJobResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.CancelExecution200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.CancelExecution200Response$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.DataSourceType",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.EquityPoint",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.Exchange",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      },
+      {
+        "name": "setDescription",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      },
+      {
+        "name": "setId",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      },
+      {
+        "name": "setName",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteBacktestingRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.GetStrategyStatus200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.GetStrategyStatus200Response$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentDetail",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.JobState",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.JobState$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PostStrategy200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PrepareBacktestingRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PrepareBacktestingRequest$CadenceEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ResponseError",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ResultMap",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ResultMap$SignalsUploadEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.JobResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.JobStatus",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.JobSummary",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.sun.crypto.provider.AESCipher$General",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.ARCFOURCipher",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.DESCipher",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.DESedeCipher",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.DHParameters",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA384",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "javax.crypto.KDFParameters"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.HmacCore$HmacSHA384",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.crypto.provider.TlsMasterSecretGenerator",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "io.micrometer.context.ContextRegistry"
+  },
+  {
+    "name": "io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier"
+  },
+  {
+    "name": "io.modelcontextprotocol.json.schema.jackson3.JacksonJsonSchemaValidatorSupplier"
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$1",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Annotated",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Annotations",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$AudioContent",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$BlobResourceContents",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CallToolRequest",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "java.util.Map",
+          "java.util.Map"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CallToolRequest$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CallToolResult",
+    "methods": [
+      {
+        "name": "content",
+        "parameterTypes": []
+      },
+      {
+        "name": "isError",
+        "parameterTypes": []
+      },
+      {
+        "name": "meta",
+        "parameterTypes": []
+      },
+      {
+        "name": "structuredContent",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CallToolResult$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.util.Map",
+          "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$RootCapabilities",
+          "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Sampling",
+          "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Elicitation"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Elicitation",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Elicitation$Form",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Elicitation$Url",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$RootCapabilities",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities$Sampling",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteReference",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteRequest$CompleteArgument",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteRequest$CompleteContext",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CompleteResult$CompleteCompletion",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Content",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageRequest$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageRequest$ContextInclusionStrategy",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageResult$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$CreateMessageResult$StopReason",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ElicitRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ElicitRequest$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ElicitResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ElicitResult$Action",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ElicitResult$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$EmbeddedResource",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ErrorCodes",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$GetPromptRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$GetPromptResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Identifier",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ImageContent",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Implementation",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "java.lang.String",
+          "java.lang.String"
+        ]
+      },
+      {
+        "name": "name",
+        "parameterTypes": []
+      },
+      {
+        "name": "title",
+        "parameterTypes": []
+      },
+      {
+        "name": "version",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$InitializeRequest",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "io.modelcontextprotocol.spec.McpSchema$ClientCapabilities",
+          "io.modelcontextprotocol.spec.McpSchema$Implementation",
+          "java.util.Map"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$InitializeResult",
+    "methods": [
+      {
+        "name": "capabilities",
+        "parameterTypes": []
+      },
+      {
+        "name": "instructions",
+        "parameterTypes": []
+      },
+      {
+        "name": "meta",
+        "parameterTypes": []
+      },
+      {
+        "name": "protocolVersion",
+        "parameterTypes": []
+      },
+      {
+        "name": "serverInfo",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JSONRPCMessage",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JSONRPCNotification",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "java.lang.String",
+          "java.lang.Object"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JSONRPCRequest",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "java.lang.String",
+          "java.lang.Object",
+          "java.lang.Object"
+        ]
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JSONRPCResponse",
+    "methods": [
+      {
+        "name": "error",
+        "parameterTypes": []
+      },
+      {
+        "name": "id",
+        "parameterTypes": []
+      },
+      {
+        "name": "jsonrpc",
+        "parameterTypes": []
+      },
+      {
+        "name": "result",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JSONRPCResponse$JSONRPCError",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$JsonSchema",
+    "methods": [
+      {
+        "name": "additionalProperties",
+        "parameterTypes": []
+      },
+      {
+        "name": "definitions",
+        "parameterTypes": []
+      },
+      {
+        "name": "defs",
+        "parameterTypes": []
+      },
+      {
+        "name": "properties",
+        "parameterTypes": []
+      },
+      {
+        "name": "required",
+        "parameterTypes": []
+      },
+      {
+        "name": "type",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ListPromptsResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ListResourceTemplatesResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ListResourcesResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ListRootsResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ListToolsResult",
+    "methods": [
+      {
+        "name": "meta",
+        "parameterTypes": []
+      },
+      {
+        "name": "nextCursor",
+        "parameterTypes": []
+      },
+      {
+        "name": "tools",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$LoggingLevel",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$LoggingMessageNotification",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$LoggingMessageNotification$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Meta",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ModelHint",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ModelPreferences",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ModelPreferences$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Notification",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$PaginatedRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$PaginatedResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ProgressNotification",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Prompt",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$PromptArgument",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$PromptMessage",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$PromptReference",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ReadResourceRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ReadResourceResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Request",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Resource",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Resource$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceContent",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceContents",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceLink",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceLink$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceReference",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceTemplate",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourceTemplate$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ResourcesUpdatedNotification",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Result",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Role",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Root",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$SamplingMessage",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities",
+    "methods": [
+      {
+        "name": "completions",
+        "parameterTypes": []
+      },
+      {
+        "name": "experimental",
+        "parameterTypes": []
+      },
+      {
+        "name": "logging",
+        "parameterTypes": []
+      },
+      {
+        "name": "prompts",
+        "parameterTypes": []
+      },
+      {
+        "name": "resources",
+        "parameterTypes": []
+      },
+      {
+        "name": "tools",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$CompletionCapabilities",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$LoggingCapabilities",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$PromptCapabilities",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$ResourceCapabilities",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ServerCapabilities$ToolCapabilities",
+    "methods": [
+      {
+        "name": "listChanged",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$SetLevelRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$SubscribeRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$TextContent",
+    "methods": [
+      {
+        "name": "annotations",
+        "parameterTypes": []
+      },
+      {
+        "name": "meta",
+        "parameterTypes": []
+      },
+      {
+        "name": "text",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$TextResourceContents",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Tool",
+    "methods": [
+      {
+        "name": "annotations",
+        "parameterTypes": []
+      },
+      {
+        "name": "description",
+        "parameterTypes": []
+      },
+      {
+        "name": "inputSchema",
+        "parameterTypes": []
+      },
+      {
+        "name": "meta",
+        "parameterTypes": []
+      },
+      {
+        "name": "name",
+        "parameterTypes": []
+      },
+      {
+        "name": "outputSchema",
+        "parameterTypes": []
+      },
+      {
+        "name": "title",
+        "parameterTypes": []
+      }
+    ],
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Tool$Builder",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$ToolAnnotations",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$Tool[]"
+  },
+  {
+    "name": "io.modelcontextprotocol.spec.McpSchema$UnsubscribeRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "java.io.Serializable"
+  },
+  {
+    "name": "java.lang.Boolean",
+    "methods": [
+      {
+        "name": "getBoolean",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "java.lang.Iterable"
+  },
+  {
+    "name": "java.lang.Object[]"
+  },
+  {
+    "name": "java.lang.Record"
+  },
+  {
+    "name": "java.lang.String[]"
+  },
+  {
+    "name": "java.security.AlgorithmParametersSpi"
+  },
+  {
+    "name": "java.security.KeyStoreSpi"
+  },
+  {
+    "name": "java.security.interfaces.ECPrivateKey"
+  },
+  {
+    "name": "java.security.interfaces.ECPublicKey"
+  },
+  {
+    "name": "java.util.AbstractCollection"
+  },
+  {
+    "name": "java.util.AbstractMap"
+  },
+  {
+    "name": "java.util.Collection"
+  },
+  {
+    "name": "java.util.ImmutableCollections$AbstractImmutableCollection"
+  },
+  {
+    "name": "java.util.ImmutableCollections$AbstractImmutableList"
+  },
+  {
+    "name": "java.util.ImmutableCollections$AbstractImmutableMap"
+  },
+  {
+    "name": "java.util.ImmutableCollections$List12"
+  },
+  {
+    "name": "java.util.ImmutableCollections$ListN"
+  },
+  {
+    "name": "java.util.ImmutableCollections$Map1"
+  },
+  {
+    "name": "java.util.ImmutableCollections$MapN"
+  },
+  {
+    "name": "java.util.List"
+  },
+  {
+    "name": "java.util.Map"
+  },
+  {
+    "name": "java.util.RandomAccess"
+  },
+  {
+    "name": "reactor.core.publisher.FlatMapTracker"
+  },
+  {
+    "name": "reactor.core.publisher.FluxFlatMap$FlatMapInner"
+  },
+  {
+    "name": "reactor.core.publisher.FluxFlatMap$FlatMapMain"
+  },
+  {
+    "name": "reactor.core.publisher.FluxOnErrorReturn$ReturnSubscriber"
+  },
+  {
+    "name": "reactor.core.publisher.FluxPublishOn$PublishOnConditionalSubscriber"
+  },
+  {
+    "name": "reactor.core.publisher.FluxReplay"
+  },
+  {
+    "name": "reactor.core.publisher.FluxSubscribeOnCallable$CallableSubscribeOnSubscription"
+  },
+  {
+    "name": "reactor.core.publisher.LambdaMonoSubscriber"
+  },
+  {
+    "name": "reactor.core.publisher.LambdaSubscriber"
+  },
+  {
+    "name": "reactor.core.publisher.MonoFlatMap$FlatMapMain"
+  },
+  {
+    "name": "reactor.core.publisher.MonoIgnoreThen$ThenIgnoreMain"
+  },
+  {
+    "name": "reactor.core.publisher.MonoZip$ZipCoordinator"
+  },
+  {
+    "name": "reactor.core.publisher.MonoZip$ZipInner"
+  },
+  {
+    "name": "reactor.core.publisher.Operators$MonoInnerProducerBase"
+  },
+  {
+    "name": "reactor.core.publisher.Operators$MultiSubscriptionSubscriber"
+  },
+  {
+    "name": "reactor.core.publisher.Operators$ScalarSubscription"
+  },
+  {
+    "name": "reactor.core.publisher.SinkEmptyMulticast"
+  },
+  {
+    "name": "reactor.core.publisher.SinkManyUnicast"
+  },
+  {
+    "name": "reactor.core.publisher.SinksSpecs$AbstractSerializedSink"
+  },
+  {
+    "name": "reactor.core.scheduler.BoundedElasticScheduler"
+  },
+  {
+    "name": "reactor.core.scheduler.BoundedElasticScheduler$BoundedServices"
+  },
+  {
+    "name": "reactor.core.scheduler.BoundedElasticScheduler$BoundedState"
+  },
+  {
+    "name": "reactor.core.scheduler.DelegateServiceScheduler"
+  },
+  {
+    "name": "reactor.core.scheduler.SchedulerTask"
+  },
+  {
+    "name": "reactor.core.scheduler.WorkerTask"
+  },
+  {
+    "name": "reactor.util.concurrent.SpscArrayQueueConsumer"
+  },
+  {
+    "name": "reactor.util.concurrent.SpscArrayQueueProducer"
+  },
+  {
+    "name": "reactor.util.concurrent.SpscLinkedArrayQueue"
+  },
+  {
+    "name": "sun.security.pkcs12.PKCS12KeyStore",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.pkcs12.PKCS12KeyStore$DualFormatPKCS12",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.DSA$SHA224withDSA",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.DSA$SHA256withDSA",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.JavaKeyStore$DualFormatJKS",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.JavaKeyStore$JKS",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.NativePRNG",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.security.SecureRandomParameters"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.SHA",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.SHA2$SHA224",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.SHA2$SHA256",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.SHA5$SHA384",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.SHA5$SHA512",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.X509Factory",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.provider.certpath.PKIXCertPathValidator",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.rsa.PSSParameters",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.rsa.RSAKeyFactory$Legacy",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.rsa.RSAPSSSignature",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.rsa.RSASignature$SHA224withRSA",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.ssl.SSLContextImpl$TLSContext",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.AuthorityInfoAccessExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.AuthorityKeyIdentifierExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.BasicConstraintsExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.CRLDistributionPointsExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.CertificatePoliciesExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.ExtendedKeyUsageExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.KeyUsageExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.NetscapeCertTypeExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.PrivateKeyUsageExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.SubjectAlternativeNameExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.SubjectKeyIdentifierExtension",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.Boolean",
+          "java.lang.Object"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "sun.text.resources.cldr.FormatData"
+  },
+  {
+    "name": "sun.text.resources.cldr.FormatData_en"
+  },
+  {
+    "name": "sun.text.resources.cldr.FormatData_en_US"
+  },
+  {
+    "name": "sun.util.resources.cldr.CalendarData"
+  },
+  {
+    "name": "tools.jackson.databind.deser.Deserializers[]"
+  },
+  {
+    "name": "tools.jackson.databind.deser.KeyDeserializers[]"
+  },
+  {
+    "name": "tools.jackson.databind.deser.ValueInstantiators[]"
+  },
+  {
+    "name": "tools.jackson.databind.ser.Serializers[]"
+  }
+]

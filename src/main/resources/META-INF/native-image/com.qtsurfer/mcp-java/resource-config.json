@@ -1,8 +1,51 @@
 {
   "resources": {
     "includes": [
-      {"pattern": "\\Qbuild.properties\\E"},
-      {"pattern": "\\Qtls/google-we1.pem\\E"}
+      {
+        "pattern": "\\QMETA-INF/services/ch.qos.logback.classic.spi.Configurator\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/io.modelcontextprotocol.json.McpJsonMapperSupplier\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/io.modelcontextprotocol.json.schema.JsonSchemaValidatorSupplier\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/java.net.spi.InetAddressResolverProvider\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/java.net.spi.URLStreamHandlerProvider\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/java.nio.channels.spi.SelectorProvider\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/java.time.zone.ZoneRulesProvider\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/javax.xml.parsers.SAXParserFactory\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/services/org.slf4j.spi.SLF4JServiceProvider\\E"
+      },
+      {
+        "pattern": "\\Qbuild.properties\\E"
+      },
+      {
+        "pattern": "\\Qlogback-test.scmo\\E"
+      },
+      {
+        "pattern": "\\Qlogback-test.xml\\E"
+      },
+      {
+        "pattern": "\\Qlogback.scmo\\E"
+      },
+      {
+        "pattern": "\\Qlogback.xml\\E"
+      },
+      {
+        "pattern": "\\Qtls/google-we1.pem\\E"
+      }
     ]
   }
 }
