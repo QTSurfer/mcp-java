@@ -1,0 +1,74 @@
+name: Installers
+
+# Smoke-tests the install scripts on every supported platform.
+# Runs ONLY when an install script changes — installing from the latest
+# published release validates both the script and the release assets.
+on:
+  push:
+    paths:
+      - install.sh
+      - install.ps1
+  pull_request:
+    paths:
+      - install.sh
+      - install.ps1
+  workflow_dispatch:
+
+jobs:
+  install:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-amd64
+          - os: macos-latest
+            label: macos-arm64
+          - os: windows-latest
+            label: windows-amd64
+    # Relative path keeps it shell-agnostic (no Windows backslash vs. bash issues).
+    env:
+      INSTALL_DIR: qtsurfer-mcp-install
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run install.sh (Linux · macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: bash ./install.sh
+
+      - name: Run install.ps1 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./install.ps1
+
+      - name: Verify binary starts and MCP stub session works
+        shell: bash
+        run: |
+          BIN="$INSTALL_DIR/qtsurfer-mcp"
+          [ -f "$BIN.exe" ] && BIN="$BIN.exe"
+          [ -x "$BIN" ] || { echo "::error::installed binary not found at $BIN"; exit 1; }
+
+          echo "== --help =="
+          "$BIN" --help | tee help.txt
+          grep -Eq 'qtsurfer-mcp [0-9]+\.[0-9]+\.[0-9]+' help.txt \
+            || { echo "::error::version banner missing or shows 'dev'"; exit 1; }
+
+          # Exercise the MCP server end-to-end without a backend. This is the
+          # real check: a native image missing reflection/serialization metadata
+          # starts fine but crashes here (UnsupportedFeatureError / HTTP 0).
+          echo "== MCP stub session (initialize + tools/list) =="
+          init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}'
+          inited='{"jsonrpc":"2.0","method":"notifications/initialized"}'
+          list='{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+          { printf '%s\n' "$init" "$inited" "$list"; sleep 5; } \
+            | "$BIN" --stub > mcp.out 2> mcp.err || true
+          cat mcp.out
+          grep -q '"list_exchanges"' mcp.out \
+            || { echo "::error::tools/list did not return the expected tools"; cat mcp.err; exit 1; }
+          grep -q '"submit_backtest"' mcp.out \
+            || { echo "::error::tools/list incomplete"; cat mcp.err; exit 1; }
+          echo "OK: installer + binary + MCP stub all good on ${{ matrix.label }}"
