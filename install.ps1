@@ -35,9 +35,10 @@ function Get-NativeAsset([string]$Arch) {
 
 # ── version ───────────────────────────────────────────────────────────────────
 function Get-LatestVersion {
-  $resp = Invoke-WebRequest -Uri "https://github.com/$Repo/releases/latest" `
-    -MaximumRedirection 0 -ErrorAction SilentlyContinue
-  $resp.Headers['Location'] -replace '.*/releases/tag/', ''
+  # GitHub's /releases/latest is a 302 redirect. PowerShell 7 treats a 3xx
+  # response under -MaximumRedirection 0 as a terminating error, so resolve the
+  # tag via the REST API instead, which returns it directly.
+  (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest").tag_name
 }
 
 # ── java detection ────────────────────────────────────────────────────────────
