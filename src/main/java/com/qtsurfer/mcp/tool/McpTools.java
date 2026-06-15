@@ -7,12 +7,15 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 import com.qtsurfer.mcp.McpServerRunner;
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.InstrumentDetail;
+import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.service.BacktestingService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 /**
  * Builds the five MCP tools that expose QTSurfer over the Model Context Protocol.
@@ -25,6 +28,13 @@ public final class McpTools {
 
   private McpTools() {}
 
+  /** Default sample cap for the inline equity-curve preview in {@code get_job_status}. */
+  private static final int PREVIEW_POINTS = 200;
+  /** Default sample cap for the dedicated {@code get_equity_curve} tool. */
+  private static final int DEFAULT_MAX_POINTS = 500;
+  /** Hard upper bound on points returned by {@code get_equity_curve}. */
+  private static final int MAX_POINTS_LIMIT = 5000;
+
   public static List<SyncToolSpecification> build(BacktestingService service, String apiUrl) {
     return List.of(
         version(apiUrl),
@@ -32,6 +42,7 @@ public final class McpTools {
         listInstruments(service),
         submitBacktest(service),
         getJobStatus(service),
+        getEquityCurve(service),
         listJobs(service));
   }
 
@@ -163,19 +174,74 @@ public final class McpTools {
   private static SyncToolSpecification getJobStatus(BacktestingService service) {
     Tool tool = Tool.builder()
         .name("get_job_status")
-        .description("Get the current status of a submitted backtesting job.")
+        .description("Get the current status of a submitted backtesting job. "
+            + "Set includeEquityCurve=true to append the equity curve (downsampled to ~"
+            + PREVIEW_POINTS + " points) as compact JSON; use get_equity_curve for finer control.")
         .inputSchema(schema(
-            Map.of("jobId", prop("string", "Job ID returned by submit_backtest")),
+            Map.of(
+                "jobId", prop("string", "Job ID returned by submit_backtest"),
+                "includeEquityCurve", prop("boolean",
+                    "When true, append the equity curve (downsampled) to the result. Default false.")),
             List.of("jobId")))
         .build();
     return new SyncToolSpecification(tool,
         (exchange, request) -> {
-          String jobId = required(request.arguments(), "jobId");
+          Map<String, Object> args = request.arguments();
+          String jobId = required(args, "jobId");
+          boolean includeCurve = asBool(args == null ? null : args.get("includeEquityCurve"));
           return service.getJobStatus(jobId)
-              .map(j -> text(formatJobStatus(j.jobId(), j.instrument(), j.exchangeId(),
-                  j.status(), j.submittedAt(), j.result())))
+              .map(j -> {
+                String body = formatJobStatus(j.jobId(), j.instrument(), j.exchangeId(),
+                    j.status(), j.submittedAt(), j.result());
+                if (includeCurve && j.result() != null
+                    && j.result().equityCurve() != null && !j.result().equityCurve().isEmpty()) {
+                  body += "\n\nEquity curve:\n"
+                      + equityCurveJson(j.jobId(), j.result().equityCurve(), PREVIEW_POINTS);
+                }
+                return text(body);
+              })
               .orElse(text("Job not found: " + jobId
                   + ". Only jobs submitted in this session are tracked."));
+        });
+  }
+
+  // ---- get_equity_curve ---------------------------------------------------
+
+  private static SyncToolSpecification getEquityCurve(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("get_equity_curve")
+        .description("Return the equity curve of a COMPLETED backtest as compact JSON: parallel "
+            + "arrays t[] (epoch-millis timestamps) and equity[] (account equity). Curves longer "
+            + "than maxPoints are downsampled, always preserving the first/last points and the "
+            + "global min and max (worst drawdown and peak).")
+        .inputSchema(schema(
+            Map.of(
+                "jobId", prop("string", "Job ID returned by submit_backtest"),
+                "maxPoints", prop("integer", "Max points to return (default " + DEFAULT_MAX_POINTS
+                    + ", max " + MAX_POINTS_LIMIT + "). The curve is downsampled if longer.")),
+            List.of("jobId")))
+        .build();
+    return new SyncToolSpecification(tool,
+        (exchange, request) -> {
+          Map<String, Object> args = request.arguments();
+          String jobId = required(args, "jobId");
+          int maxPoints = clamp(asInt(args.get("maxPoints"), DEFAULT_MAX_POINTS), 1, MAX_POINTS_LIMIT);
+          var summary = service.getJobStatus(jobId);
+          if (summary.isEmpty()) {
+            return text("Job not found: " + jobId
+                + ". Only jobs submitted in this session are tracked.");
+          }
+          JobResult result = summary.get().result();
+          if (result == null) {
+            return text("Job " + jobId + " has no results yet (status: "
+                + summary.get().status() + ").");
+          }
+          List<EquityPoint> curve = result.equityCurve();
+          if (curve == null || curve.isEmpty()) {
+            return text("Job " + jobId + " produced no equity curve "
+                + "(the strategy may have emitted no yield events).");
+          }
+          return text(equityCurveJson(jobId, curve, maxPoints));
         });
   }
 
@@ -263,7 +329,83 @@ public final class McpTools {
     return sb.toString().stripTrailing();
   }
 
+  // ---- equity curve -------------------------------------------------------
+
+  /**
+   * Render an equity curve as compact JSON with parallel arrays (smaller than an array of
+   * objects). Curves longer than {@code maxPoints} are downsampled.
+   */
+  private static String equityCurveJson(String jobId, List<EquityPoint> curve, int maxPoints) {
+    List<EquityPoint> sampled = downsample(curve, maxPoints);
+    StringBuilder t = new StringBuilder();
+    StringBuilder eq = new StringBuilder();
+    for (int i = 0; i < sampled.size(); i++) {
+      if (i > 0) {
+        t.append(',');
+        eq.append(',');
+      }
+      t.append(sampled.get(i).timestamp());
+      eq.append(sampled.get(i).equity());
+    }
+    return "{\"jobId\":\"" + jobId + "\",\"unit\":\"epoch_ms\""
+        + ",\"points\":" + sampled.size()
+        + ",\"totalPoints\":" + curve.size()
+        + ",\"downsampled\":" + (sampled.size() < curve.size())
+        + ",\"t\":[" + t + "]"
+        + ",\"equity\":[" + eq + "]}";
+  }
+
+  /**
+   * Downsample to ~{@code maxPoints} via uniform striding, always keeping the first and last
+   * points and the global min/max so the worst drawdown and the peak survive the reduction.
+   */
+  private static List<EquityPoint> downsample(List<EquityPoint> curve, int maxPoints) {
+    int n = curve.size();
+    if (maxPoints <= 0 || n <= maxPoints) return curve;
+    int minI = 0, maxI = 0;
+    for (int i = 1; i < n; i++) {
+      double e = curve.get(i).equity();
+      if (e < curve.get(minI).equity()) minI = i;
+      if (e > curve.get(maxI).equity()) maxI = i;
+    }
+    TreeSet<Integer> idx = new TreeSet<>();
+    idx.add(0);
+    idx.add(n - 1);
+    idx.add(minI);
+    idx.add(maxI);
+    double stride = (double) (n - 1) / (maxPoints - 1);
+    for (int k = 0; k < maxPoints; k++) {
+      idx.add((int) Math.round(k * stride));
+    }
+    List<EquityPoint> out = new ArrayList<>(idx.size());
+    for (int i : idx) {
+      out.add(curve.get(i));
+    }
+    return out;
+  }
+
   // ---- helpers ------------------------------------------------------------
+
+  private static boolean asBool(Object v) {
+    if (v instanceof Boolean b) return b;
+    return v != null && "true".equalsIgnoreCase(v.toString().trim());
+  }
+
+  private static int asInt(Object v, int defaultValue) {
+    if (v instanceof Number n) return n.intValue();
+    if (v != null) {
+      try {
+        return Integer.parseInt(v.toString().trim());
+      } catch (NumberFormatException ignored) {
+        // fall through to default
+      }
+    }
+    return defaultValue;
+  }
+
+  private static int clamp(int v, int lo, int hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
 
   private static CallToolResult text(String content) {
     return CallToolResult.builder().addTextContent(content).build();

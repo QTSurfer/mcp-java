@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-16
+
+### Added ✨
+
+- **Equity curve access** — backtest results now expose the equity curve, which was previously fetched from the backend but silently discarded by the MCP layer.
+  - New **`get_equity_curve`** tool returns the curve of a COMPLETED job as compact JSON (parallel arrays `t[]` = epoch-millis timestamps, `equity[]` = account equity). Curves longer than `maxPoints` (default 500, max 5000) are downsampled, always preserving the first/last points and the global min and max (worst drawdown and peak).
+  - **`get_job_status`** gains an optional `includeEquityCurve` flag (default `false`) that appends the curve, downsampled to ~200 points, to the status summary.
+
 ## [0.3.3] — 2026-06-13
 
 ### Fixed 🐛

@@ -7,6 +7,7 @@ import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
 import com.qtsurfer.api.sdk.BacktestRequest;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
+import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -137,12 +138,17 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   private static JobResult toJobResult(ResultMap r) {
+    List<EquityPoint> curve = r.getEquityCurve() == null ? List.of()
+        : r.getEquityCurve().stream()
+            .filter(p -> p.getTimestamp() != null && p.getEquity() != null)
+            .map(p -> new EquityPoint(p.getTimestamp(), p.getEquity()))
+            .toList();
     return new JobResult(
         r.getPnlTotal(), r.getTotalTrades(), r.getWinRate(),
         r.getSharpeRatio(), r.getSortinoRatio(), r.getCagr(),
         r.getMaxDrawdown(), r.getMaxDrawdownPercent(),
         r.getSignalCount() != null ? r.getSignalCount().longValue() : null,
-        r.getHostName(), r.getIops());
+        r.getHostName(), r.getIops(), curve);
   }
 
   @Override
