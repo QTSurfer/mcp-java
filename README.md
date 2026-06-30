@@ -196,11 +196,10 @@ Signals:      100000
 
 ## Strategy format
 
-Strategies are written in Java and extend `AbstractTickerStrategy`. The MCP server compiles them server-side — no local Java compiler required.
+Strategies are plain Java classes compiled server-side — no local Java compiler required. Each one extends a strategy base class chosen by its data source; `AbstractTickerStrategy` (live tickers) is the most common.
 
 ```java
 import com.wualabs.qtsurfer.engine.strategy.AbstractTickerStrategy;
-// ... see SDK docs for the full strategy API
 
 public class MyStrategy extends AbstractTickerStrategy {
     @Override
@@ -210,7 +209,7 @@ public class MyStrategy extends AbstractTickerStrategy {
 }
 ```
 
-For help writing strategies — indicators, window listeners, state management, examples, and advanced patterns — install the **[QTSurfer Strategy Skills](https://github.com/QTSurfer/strategy-skills)**:
+The **[QTSurfer Strategy Skills](https://github.com/QTSurfer/strategy-skills)** are the source of truth for writing strategies — the full base-class family, indicator catalogue, window listeners, state management, signal emission, worked examples, and advanced patterns. Install:
 
 ```bash
 npx skills add QTSurfer/strategy-skills
