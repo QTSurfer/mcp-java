@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-10
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk-java` to `0.6.1` (API spec 0.97.0). `InstrumentDetail` replaced its flat `dataFrom`/`dataTo` fields with per-data-type `coverage`, so the **`list_instruments`** tool now derives each instrument's `data: <from> → <to>` window from `coverage` (preferring the `tickers` window, falling back to `klines`, and omitting the suffix when unavailable). No change to the tool's input or output contract.
+
 ## [0.4.0] — 2026-06-16
 
 ### Added ✨

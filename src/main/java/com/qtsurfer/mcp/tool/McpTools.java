@@ -12,6 +12,7 @@ import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.service.BacktestingService;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -114,10 +115,7 @@ public final class McpTools {
               if (i.getLastPrice() != null) {
                 sb.append(" (last: ").append(i.getLastPrice()).append(')');
               }
-              if (i.getDataFrom() != null && i.getDataTo() != null) {
-                sb.append(" data: ").append(i.getDataFrom().toLocalDate())
-                  .append(" → ").append(i.getDataTo().toLocalDate());
-              }
+              appendCoverage(sb, i);
               sb.append('\n');
             });
             return text(sb.toString().stripTrailing());
@@ -127,6 +125,28 @@ public final class McpTools {
             return error("Failed to list instruments: " + e.getMessage());
           }
         });
+  }
+
+  /**
+   * Appends a {@code " data: <from> → <to>"} suffix derived from the instrument's
+   * coverage, preferring the {@code tickers} window and falling back to
+   * {@code klines}. Appends nothing when coverage, both windows, or either
+   * endpoint of the chosen window is unavailable.
+   */
+  private static void appendCoverage(StringBuilder sb, InstrumentDetail instrument) {
+    if (instrument.getCoverage() == null) return;
+    var coverage = instrument.getCoverage();
+    OffsetDateTime from = null;
+    OffsetDateTime to = null;
+    if (coverage.getTickers() != null) {
+      from = coverage.getTickers().getFrom();
+      to = coverage.getTickers().getTo();
+    } else if (coverage.getKlines() != null) {
+      from = coverage.getKlines().getFrom();
+      to = coverage.getKlines().getTo();
+    }
+    if (from == null || to == null) return;
+    sb.append(" data: ").append(from.toLocalDate()).append(" → ").append(to.toLocalDate());
   }
 
   // ---- submit_backtest ----------------------------------------------------

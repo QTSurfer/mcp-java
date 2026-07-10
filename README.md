@@ -158,7 +158,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | Tool | Description |
 |------|-------------|
 | `list_exchanges` | List available exchanges (e.g. `binance`, `binancefutures`) |
-| `list_instruments` | List instruments for an exchange with data-availability windows and market info |
+| `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run; returns a job ID |
 | `get_job_status` | Get status and full execution metrics for a submitted job |
 | `list_jobs` | List jobs from the current session, optionally filtered by status |
