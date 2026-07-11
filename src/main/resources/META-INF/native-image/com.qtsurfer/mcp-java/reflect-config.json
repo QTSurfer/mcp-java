@@ -367,6 +367,30 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.PrepareJobState",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PrepareJobState$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PrepareJobStateAllOfHoursWithoutData",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PrepareJobStateAllOfHoursWithoutData$RationaleEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.PostStrategy200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

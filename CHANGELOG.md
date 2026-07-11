@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-07-11
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk-java` to `0.7.0` (API spec 0.98.0). The single-instrument preparation endpoint now returns `PrepareJobState` (with `coverageRatio` and a per-hour coverage breakdown), and `Partial` is gone from the job status enum. No change to any MCP tool's input or output contract.
+- Registered `PrepareJobState` (and its nested coverage types) in the GraalVM `reflect-config.json` so the native binary can deserialize the new preparation-status response.
+
 ## [0.5.0] — 2026-07-10
 
 ### Changed 🔄
