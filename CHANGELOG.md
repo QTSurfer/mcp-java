@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-07-18
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk-java` to `0.8.0` (API spec 0.99.1, 16 operationId renames — no request/response shape, field, or endpoint changes). `sdk-java`'s own entry point is renamed as part of that: `QTSurfer.auth(...)` → `QTSurfer.authenticate(...)`. Updated the server's single auth-mint call site (`Main.authenticate(...)`, internal) accordingly. No change to any MCP tool's input or output contract.
+- Registered the renamed generated model classes in the GraalVM `reflect-config.json` (`CancelExecution200Response`→`CancelBacktest200Response`, `GetStrategyStatus200Response`→`GetStrategy200Response`, `PostStrategy200Response`→`CompileStrategy200Response`, `ExecuteBacktestingRequest`→`ExecuteBacktestRequest`, `PrepareBacktestingRequest`→`PrepareRequest`, plus their nested enums) so the native binary keeps deserializing/instantiating these types after the rename.
+
 ## [0.6.0] — 2026-07-11
 
 ### Changed 🔄

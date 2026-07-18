@@ -36,7 +36,7 @@ import javax.net.ssl.X509TrustManager;
  * <h2>Authentication</h2>
  * The server reads a long-lived API key from {@code QTSURFER_APIKEY} (or the
  * {@code --apikey} flag) and exchanges it for a short-lived JWT via
- * {@link QTSurfer#auth(String)}. The SDK transparently refreshes the JWT on
+ * {@link QTSurfer#authenticate(String)}. The SDK transparently refreshes the JWT on
  * expiry for the lifetime of the process, so the MCP server can run for days
  * without manual rotation.
  *
@@ -125,7 +125,7 @@ public class Main {
   static AuthenticatedClient authenticate(String apikey, String baseUrl) {
     authCount.incrementAndGet();
     AuthOptions opts = AuthOptions.builder().baseUrl(baseUrl).build();
-    return QTSurfer.auth(apikey, opts);
+    return QTSurfer.authenticate(apikey, opts);
   }
 
   /**

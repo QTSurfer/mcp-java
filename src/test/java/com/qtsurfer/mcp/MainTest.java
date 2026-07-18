@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Unit tests for the {@link Main} entry-point startup paths that don't require
  * a live backend: --help, --stub, and the fail-fast-on-missing-apikey path.
  *
- * <p>Live {@code QTSurfer.auth(...)} is not exercised here — that's covered
+ * <p>Live {@code QTSurfer.authenticate(...)} is not exercised here — that's covered
  * by the SDK's own test suite. We only assert that {@link Main#run(String[])}
  * surfaces a clear error and returns a non-zero exit code when no API key
  * is available.

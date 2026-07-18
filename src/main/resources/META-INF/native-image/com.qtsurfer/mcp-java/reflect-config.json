@@ -277,13 +277,13 @@
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.CancelExecution200Response",
+    "name": "com.qtsurfer.api.client.model.CancelBacktest200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.CancelExecution200Response$StatusEnum",
+    "name": "com.qtsurfer.api.client.model.CancelBacktest200Response$StatusEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
@@ -331,19 +331,19 @@
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.ExecuteBacktestingRequest",
+    "name": "com.qtsurfer.api.client.model.ExecuteBacktestRequest",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.GetStrategyStatus200Response",
+    "name": "com.qtsurfer.api.client.model.GetStrategy200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.GetStrategyStatus200Response$StatusEnum",
+    "name": "com.qtsurfer.api.client.model.GetStrategy200Response$StatusEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
@@ -391,19 +391,19 @@
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.PostStrategy200Response",
+    "name": "com.qtsurfer.api.client.model.CompileStrategy200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.PrepareBacktestingRequest",
+    "name": "com.qtsurfer.api.client.model.PrepareRequest",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.PrepareBacktestingRequest$CadenceEnum",
+    "name": "com.qtsurfer.api.client.model.PrepareRequest$CadenceEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
