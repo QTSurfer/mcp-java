@@ -6,7 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.7.0] — 2026-07-18
+## [0.7.1] — 2026-07-27
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk` to `0.8.1`, which fixes the execute poll ending early when the API
+  answers `202` — the status it returns when a job is known but its result is not readable yet.
+  Nothing in this repo changed: the SDK's `Backtest` abstraction absorbs that distinction, so a
+  backtest driven through the MCP tools could previously report an empty result for a run that had
+  actually completed, and now polls until the result is readable.
 
 ### Changed 🔄
 
