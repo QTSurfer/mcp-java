@@ -337,18 +337,6 @@
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.GetStrategy200Response",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
-  {
-    "name": "com.qtsurfer.api.client.model.GetStrategy200Response$StatusEnum",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
-  {
     "name": "com.qtsurfer.api.client.model.InstrumentDetail",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -362,6 +350,18 @@
   },
   {
     "name": "com.qtsurfer.api.client.model.JobState$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.Notice",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.Notice$ProvenanceEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true

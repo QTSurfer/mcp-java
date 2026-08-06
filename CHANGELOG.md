@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-08-06
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk` to `0.9.0`, which compiles a strategy in a single request now that the
+  API answers synchronously. Nothing in this repo changed to accommodate it: the SDK's `Backtest`
+  abstraction absorbs the difference, so the compile step is simply faster and reports a bad
+  source immediately.
+- Registered `Notice` for reflection in the native image. Backtest results can now carry engine
+  diagnostics, and without the registration the native binaries would fail to deserialize a result
+  that includes them — while the JVM build would be perfectly fine, so this is only visible where
+  it matters.
+- Dropped the reflection entries for `GetStrategy200Response`, a type the client no longer
+  generates.
+
+### Added ✨
+
+- `verify` now checks javadoc with doclint at `all,-missing`, so a broken `@link`, malformed HTML
+  or an `@param` naming a parameter that does not exist fails the build. Nothing here was
+  undocumented — the check exists to keep it that way. No javadoc jar is attached: this is an
+  application, not a library.
+
 ## [0.7.1] — 2026-07-27
 
 ### Changed 🔄
