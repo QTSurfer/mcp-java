@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-08-12
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk` to `0.10.0` (OpenAPI spec `0.106.0` via `com.qtsurfer:api-client-java`
+  `0.8.0` — sweep walk-forward validation and a new sweep sensitivity endpoint) — no MCP tool
+  touches sweep, so this is a dependency bump only.
+
 ## [0.8.0] — 2026-08-06
 
 ### Changed 🔄
