@@ -289,6 +289,30 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.CancelSweep200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.CancelSweep200Response$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.CompileStrategy200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.CoverageWindow",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.DataSourceType",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -337,7 +361,85 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepAccepted",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepResult$ObjectiveEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepResult$OrderEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepResult$RankingEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ExecuteSweepResult$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.HalLink",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentCoverage",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.InstrumentDetail",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentLinks",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentListMeta",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentListMeta$SegmentEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.InstrumentListResponse",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
@@ -391,12 +493,6 @@
     "allDeclaredFields": true
   },
   {
-    "name": "com.qtsurfer.api.client.model.CompileStrategy200Response",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
-  {
     "name": "com.qtsurfer.api.client.model.PrepareRequest",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -422,6 +518,186 @@
   },
   {
     "name": "com.qtsurfer.api.client.model.ResultMap$SignalsUploadEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.StrategyState",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.StrategyState$RequiredSourcesEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.StrategyState$ValidationEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxis",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxis$SweepAxisDeserializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxis$SweepAxisSerializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxisOneOf",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxisOneOf1",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxisOneOf1ValuesInner",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxisOneOf1ValuesInner$SweepAxisOneOf1ValuesInnerDeserializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepAxisOneOf1ValuesInner$SweepAxisOneOf1ValuesInnerSerializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepBaseConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepBaseConfig$FeeLegEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepHeatmap",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepHeatmapCell",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepMarginal",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepMarginalPoint",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepProgress",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepRunRow",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSensitivity",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSensitivity$ObjectiveEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSensitivity$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSpecRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSpecRequest$ObjectiveEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.SweepSpecRequest$SamplerEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.WalkForwardAccepted",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.WalkForwardFold",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.WalkForwardRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.WalkForwardResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.EquityPoint",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true

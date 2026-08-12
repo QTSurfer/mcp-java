@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlySevenTools() {
-    assertThat(tools).hasSize(7);
+  void registersExactlyElevenTools() {
+    assertThat(tools).hasSize(11);
   }
 
   @Test
@@ -63,7 +63,8 @@ class McpToolsTest {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
         "version", "list_exchanges", "list_instruments", "submit_backtest",
-        "get_job_status", "get_equity_curve", "list_jobs");
+        "get_job_status", "get_equity_curve", "list_jobs",
+        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity");
   }
 
   // ---- version ------------------------------------------------------------
@@ -150,9 +151,17 @@ class McpToolsTest {
   // ---- get_job_status -----------------------------------------------------
 
   @Test
-  void getJobStatusReturnsNotFoundForUnknownId() {
+  void getJobStatusTellsAnAgentToSupplyExchangeIdForAnUnknownId() {
     assertThat(textOf(call("get_job_status", Map.of("jobId", "bt-unknown"))))
-        .contains("not found");
+        .contains("was not submitted in this session")
+        .contains("exchangeId");
+  }
+
+  @Test
+  void getJobStatusReportsAPlatformMissWhenExchangeIdWasGiven() {
+    String text = textOf(call("get_job_status",
+        Map.of("jobId", "bt-unknown", "exchangeId", "binance")));
+    assertThat(text).contains("the platform returned nothing").contains("binance");
   }
 
   @Test
@@ -205,8 +214,8 @@ class McpToolsTest {
   private static List<SyncToolSpecification> toolsWithCurve() {
     BacktestingServiceStub stub = new BacktestingServiceStub() {
       @Override
-      public Optional<JobSummary> getJobStatus(String jobId) {
-        if (!"bt-curve".equals(jobId)) return super.getJobStatus(jobId);
+      public Optional<JobSummary> getJobStatus(String jobId, String exchangeId) {
+        if (!"bt-curve".equals(jobId)) return super.getJobStatus(jobId, exchangeId);
         List<EquityPoint> curve = new ArrayList<>();
         long t0 = 1_700_000_000_000L;
         for (int i = 0; i < 1000; i++) {
@@ -242,7 +251,7 @@ class McpToolsTest {
   @Test
   void getEquityCurveReturnsNotFoundForUnknownJob() {
     assertThat(callText(toolsWithCurve(), "get_equity_curve", Map.of("jobId", "bt-missing")))
-        .contains("not found");
+        .contains("was not submitted in this session");
   }
 
   @Test
@@ -254,5 +263,218 @@ class McpToolsTest {
         Map.of("jobId", "bt-curve", "includeEquityCurve", true)))
         .contains("Equity curve")
         .contains("\"totalPoints\":1000");
+  }
+
+  // ---- sweeps -------------------------------------------------------------
+
+  /** A grid of 40 vectors — more than the stub carries, and far more than the tool shows. */
+  private static final Map<String, Object> WIDE_GRID =
+      Map.of("rsiPeriod", Map.of("from", 1, "to", 40, "step", 1));
+
+  private String submitSweep(Map<String, Object> params, Object walkForward) {
+    Map<String, Object> args = new java.util.LinkedHashMap<>(Map.of(
+        "strategyCode", "// code",
+        "exchangeId", "binance",
+        "instrument", "BTC/USDT",
+        "from", "2024-01-01",
+        "to", "2024-03-31",
+        "params", params));
+    if (walkForward != null) args.put("walkForward", walkForward);
+    String text = textOf(call("submit_sweep", args));
+    assertThat(text).as(text).contains("Sweep ID: sw-");
+    int at = text.indexOf("sw-");
+    return text.substring(at, at + 11);
+  }
+
+  @Test
+  void submitSweepReportsGridSizeAndSeed() {
+    String text = textOf(call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31", "params", WIDE_GRID)));
+    assertThat(text).contains("Runs: 40").contains("Seed:").contains("get_sweep_status");
+  }
+
+  @Test
+  void submitSweepRejectsAMissingGrid() {
+    var result = call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("params");
+  }
+
+  @Test
+  void submitSweepRejectsAnAxisThatIsNeitherRangeNorValues() {
+    var result = call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31",
+        "params", Map.of("rsiPeriod", Map.of("min", 1))));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("rsiPeriod");
+  }
+
+  @Test
+  void submitSweepAcceptsBooleanAxesAndSamplers() {
+    String text = textOf(call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31",
+        "params", Map.of(
+            "useTrendFilter", Map.of("values", List.of(true, false)),
+            "rsiPeriod", List.of(7, 14, 21)),
+        "sampler", "lhs", "samples", 4, "seed", 99, "objective", "sortino")));
+    assertThat(text).contains("Runs: 6").contains("Seed: 99");
+  }
+
+  @Test
+  void submitSweepRejectsAnUnknownObjective() {
+    var result = call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31", "params", WIDE_GRID,
+        "objective", "kelly"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("sharpe, sortino, pnl, maxdd");
+  }
+
+  @Test
+  void submitSweepAnnouncesTheWalkForwardShape() {
+    String text = textOf(call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31", "params", WIDE_GRID,
+        "walkForward", Map.of("folds", 4, "inSamplePct", 60))));
+    assertThat(text).contains("Walk-forward: 4 folds").contains("60% in-sample")
+        .contains("one row per fold");
+  }
+
+  @Test
+  void submitSweepRejectsFewerThanTwoFolds() {
+    var result = call("submit_sweep", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31", "params", WIDE_GRID,
+        "walkForward", Map.of("folds", 1)));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("folds");
+  }
+
+  @Test
+  void getSweepStatusCapsTheLeaderboardAndSaysSoWithThreeNumbers() {
+    String sweepId = submitSweep(WIDE_GRID, null);
+    String text = textOf(call("get_sweep_status", Map.of("sweepId", sweepId)));
+    assertThat(text)
+        .contains("showing 10 of 25 rows carried")
+        .contains("40 row(s) available")
+        .contains("truncated")
+        .contains("15 carried row(s) not shown");
+    assertThat(text.lines().filter(l -> l.startsWith("#")).count()).isEqualTo(10);
+  }
+
+  @Test
+  void getSweepStatusHonoursTopNUpToTheHardCap() {
+    String sweepId = submitSweep(WIDE_GRID, null);
+    assertThat(textOf(call("get_sweep_status", Map.of("sweepId", sweepId, "topN", 3)))
+        .lines().filter(l -> l.startsWith("#")).count()).isEqualTo(3);
+    // 500 is clamped to MAX_TOP_N, which is still more than the 25 rows carried.
+    assertThat(textOf(call("get_sweep_status", Map.of("sweepId", sweepId, "topN", 500)))
+        .lines().filter(l -> l.startsWith("#")).count()).isEqualTo(25);
+  }
+
+  @Test
+  void getSweepStatusFlagsAnUnevidencedPlateauScore() {
+    String sweepId = submitSweep(WIDE_GRID, null);
+    String text = textOf(call("get_sweep_status", Map.of("sweepId", sweepId)));
+    assertThat(text).contains("neighbours=0, unevidenced");
+  }
+
+  @Test
+  void getSweepStatusReportsTheWalkForwardShape() {
+    String sweepId = submitSweep(WIDE_GRID, Map.of("folds", 3));
+    String text = textOf(call("get_sweep_status", Map.of("sweepId", sweepId)));
+    assertThat(text)
+        .contains("Walk-forward: 3 folds")
+        .contains("runIx is the fold index")
+        .contains("Param drift: 0.250")
+        .doesNotContain("plateau=");
+  }
+
+  @Test
+  void getSweepStatusExplainsThatSweepsAreSessionScoped() {
+    String text = textOf(call("get_sweep_status", Map.of("sweepId", "sw-unknown")));
+    assertThat(text).contains("was not submitted in this session")
+        .contains("cannot be polled, cancelled or analysed here");
+  }
+
+  @Test
+  void cancelSweepStopsARunningSweepOnceAndThenReportsNothingToStop() {
+    String sweepId = submitSweep(WIDE_GRID, null);
+    assertThat(textOf(call("cancel_sweep", Map.of("sweepId", sweepId))))
+        .contains("Cancellation requested");
+    assertThat(textOf(call("cancel_sweep", Map.of("sweepId", sweepId))))
+        .contains("was not running");
+  }
+
+  @Test
+  void cancelSweepReportsAnUnknownSweep() {
+    assertThat(textOf(call("cancel_sweep", Map.of("sweepId", "sw-unknown"))))
+        .contains("was not submitted in this session");
+  }
+
+  @Test
+  void sweepSensitivityReturnsMarginalsAndNoHeatmapByDefault() {
+    String sweepId = submitSweep(
+        Map.of("rsiPeriod", List.of(7, 14), "emaPeriod", List.of(20, 50)), null);
+    String text = textOf(call("get_sweep_sensitivity", Map.of("sweepId", sweepId)));
+    assertThat(text).contains("Marginals").contains("rsiPeriod:").contains("emaPeriod:")
+        .contains("best").contains("mean").contains("worst")
+        .doesNotContain("Interaction");
+  }
+
+  @Test
+  void sweepSensitivityReturnsOnePairWhenAsked() {
+    String sweepId = submitSweep(
+        Map.of("rsiPeriod", List.of(7, 14), "emaPeriod", List.of(20, 50)), null);
+    String text = textOf(call("get_sweep_sensitivity",
+        Map.of("sweepId", sweepId, "paramA", "rsiPeriod", "paramB", "emaPeriod")));
+    assertThat(text).contains("Interaction").doesNotContain("Marginals");
+  }
+
+  @Test
+  void sweepSensitivityRejectsHalfAPair() {
+    var result = call("get_sweep_sensitivity",
+        Map.of("sweepId", "sw-anything", "paramA", "rsiPeriod"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("must be given together");
+  }
+
+  @Test
+  void sweepSensitivitySurfacesHeatmapsTruncated() {
+    // Four axes make six pairs; the stub caps them, exactly as the platform does.
+    String sweepId = submitSweep(Map.of(
+        "a", List.of(1, 2), "b", List.of(1, 2),
+        "c", List.of(1, 2), "d", List.of(1, 2)), null);
+    assertThat(textOf(call("get_sweep_sensitivity", Map.of("sweepId", sweepId))))
+        .contains("heatmapsTruncated is set");
+  }
+
+  @Test
+  void sweepSensitivityBlamesTheCapForAMissingPairWhenTruncated() {
+    // The stub keeps the first three pairs in axis-name order, so c × d is one it drops.
+    String sweepId = submitSweep(Map.of(
+        "a", List.of(1, 2), "b", List.of(1, 2),
+        "c", List.of(1, 2), "d", List.of(1, 2)), null);
+    String text = textOf(call("get_sweep_sensitivity",
+        Map.of("sweepId", sweepId, "paramA", "c", "paramB", "d")));
+    assertThat(text).contains("No interaction surface")
+        .contains("probably dropped by the cap")
+        .contains("Axes swept:");
+  }
+
+  @Test
+  void sweepSensitivityExplainsAMissingPairWhenNothingWasTruncated() {
+    String sweepId = submitSweep(
+        Map.of("rsiPeriod", List.of(7, 14), "emaPeriod", List.of(20, 50)), null);
+    String text = textOf(call("get_sweep_sensitivity",
+        Map.of("sweepId", sweepId, "paramA", "rsiPeriod", "paramB", "nosuchparam")));
+    assertThat(text).contains("No interaction surface")
+        .contains("not among them")
+        .contains("Axes swept: emaPeriod, rsiPeriod");
   }
 }

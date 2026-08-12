@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-08-12
+
+### Added ✨
+
+- **Four sweep tools.** An agent asked to explore a strategy's parameter space had no tool for it
+  and fell back to running single backtests in a loop — slow, and it got none of the ranking or
+  anti-overfitting machinery the platform already computes.
+  - **`submit_sweep`** — mirrors `submit_backtest`, plus the parameter grid (numeric ranges or
+    explicit value lists, one axis per strategy property), an optional sampler (`grid`, `random`,
+    `lhs`) with a sample count and a replay seed, an objective, and optional walk-forward
+    validation. It blocks until the platform accepts the sweep, because the sweep id does not
+    exist before then; the description says so, and says that an identical resubmission comes
+    back with `queued=false` rather than starting a second sweep.
+  - **`get_sweep_status`** — progress plus the leaderboard, capped at 10 rows (`topN`, max 50).
+    The response always states three numbers — rows shown, rows the platform's response carried,
+    and rows it reports as available — plus its `truncated` flag, so a capped leaderboard never
+    looks like a short one.
+  - **`cancel_sweep`** — stops a running sweep between parameter vectors; the rows already
+    finished stay readable.
+  - **`get_sweep_sensitivity`** — marginals by default, one axis at a time with the rest
+    collapsed, which is linear in the axis count and answers the question an agent actually has:
+    which parameter mattered. Interaction surfaces are quadratic, so they come back only for a
+    named `paramA`/`paramB` pair, and `heatmapsTruncated` is surfaced whenever the platform
+    capped them — including when it explains a pair that was asked for and did not come back.
+- **`get_job_status` falls back to the platform.** Job state was served only from this process's
+  own map, so a job submitted by the web app, another session, or this server before a restart
+  was invisible even when the agent held its id. Unknown ids are now read through the SDK's
+  `backtestResult`, whose four outcomes map one for one onto the existing job vocabulary —
+  completed, failed, aborted → CANCELED, in progress → EXECUTING (the id addresses an execute
+  job, so compilation and preparation are already behind it). The endpoint is addressed by
+  exchange as well as job, so the tool gains an optional **`exchangeId`**, needed only on that
+  path; the description and the not-found message both say exactly when. `get_equity_curve`
+  takes the same optional argument, so a job readable through one tool is readable through both.
+- **A gate on `reflect-config.json`.** It was the one artifact here no check covered: `verify`
+  runs on the JVM where reflection config is inert, the native image is built only on a tag, and
+  the offline stub tests never put a real payload through Jackson — so a green pipeline proved
+  nothing about it. A new test derives what must be registered by walking the service seam's
+  return types, transitively through generic arguments, declared fields and member types, and
+  fails on anything missing. The two categories no return type can reach — request bodies, and
+  wire types the SDK deserializes internally and flattens before handing anything back — are
+  pinned explicitly with their reason, and three further assertions keep those pins honest: each
+  must still resolve, none may have quietly become derivable, and no registered type may go
+  unaccounted for.
+
+### Fixed 🐛
+
+- Registered the types the reflection gate found missing. Twenty-one of them are reachable from
+  what a tool returns, including `CoverageWindow` and `InstrumentCoverage` — read by
+  `list_instruments` since 0.5.0 — and the MCP layer's own `EquityPoint`. Untangling the sweep
+  and validation graphs added twenty-five more on the pinned side. In a native binary every one
+  of these would have failed to deserialize at runtime while every build stayed green.
+
+### Changed 🔄
+
+- Bumped `com.qtsurfer:sdk` to `0.13.0`, which is what exposes `sweep(...)` with its `Sweep`
+  handle (`await`, `results`, `cancel`, `sensitivity`) and the standalone `backtestResult(...)`
+  read behind the two changes above.
+- `list_jobs` now says in its description that it is session-scoped and that the API has no list
+  operation to fall back to, so an empty result is not a statement about the account.
+
 ## [0.9.0] — 2026-08-12
 
 ### Changed 🔄

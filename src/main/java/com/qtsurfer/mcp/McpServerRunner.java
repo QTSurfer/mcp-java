@@ -44,7 +44,10 @@ public final class McpServerRunner {
             "QTSurfer backtesting tools. "
                 + "Start with list_instruments to see available exchanges and markets, "
                 + "then call submit_backtest with your strategy code. "
-                + "Poll results with get_job_status.")
+                + "Poll results with get_job_status. "
+                + "To explore a strategy's parameter space, use submit_sweep rather than a loop "
+                + "of backtests: it returns a ranked leaderboard with overfitting diagnostics, "
+                + "and get_sweep_sensitivity says which parameter actually mattered.")
         .capabilities(ServerCapabilities.builder().tools(false).build())
         .tools(McpTools.build(backtestingService, apiUrl))
         .build();

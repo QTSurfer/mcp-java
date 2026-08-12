@@ -41,7 +41,7 @@ The installer detects your platform and picks the right delivery:
 Pin a version or override the destination:
 
 ```bash
-VERSION=0.4.0 INSTALL_DIR=~/.local/bin \
+VERSION=0.10.0 INSTALL_DIR=~/.local/bin \
   curl -fsSL https://raw.githubusercontent.com/QTSurfer/mcp-java/main/install.sh | bash
 ```
 
@@ -160,8 +160,32 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_exchanges` | List available exchanges (e.g. `binance`, `binancefutures`) |
 | `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run; returns a job ID |
-| `get_job_status` | Get status and full execution metrics for a submitted job |
+| `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
+| `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
 | `list_jobs` | List jobs from the current session, optionally filtered by status |
+| `submit_sweep` | Run one strategy across a parameter grid, optionally walk-forward validated; returns a sweep ID |
+| `get_sweep_status` | Progress and a capped, plateau-ranked leaderboard for a sweep |
+| `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
+| `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
+
+### Sweeps
+
+A sweep runs the same strategy once per parameter vector and ranks the results as one job, which
+is not the same thing as a loop of backtests. What the loop cannot produce:
+
+- a **plateau ranking** rather than a raw one — a point's score is the worst run in its
+  neighbourhood, so a spike that does not survive small parameter moves ranks low;
+- a **deflated Sharpe** per row, discounting for how many vectors were tried;
+- a **probability of backtest overfitting** for the search as a whole;
+- **walk-forward validation**, where the answer is one row per fold scored out-of-sample instead
+  of a ranked grid;
+- **sensitivity marginals**, which say whether an axis moved the objective at all — a question
+  the leaderboard cannot answer, since a sweep can spend its whole budget on an axis that did
+  nothing and the top rows will not show it.
+
+`submit_sweep` blocks until the platform accepts the sweep: it compiles the strategy and prepares
+the dataset first, which takes as long as it takes on a long window. The three read/cancel tools
+work on sweeps submitted in the current session.
 
 ### Example session
 
@@ -192,6 +216,38 @@ Sharpe:       1.245 | Sortino: 1.872
 CAGR:         15.34%
 Max Drawdown: 8.75%
 Signals:      100000
+```
+
+### Example sweep
+
+```
+> submit_sweep exchangeId=binance instrument=BTC/USDT from=2026-01-01 to=2026-03-31
+             params={"rsiPeriod":{"from":7,"to":28,"step":1},"stopLossPct":{"values":[1,2,3]}}
+Sweep submitted. Sweep ID: sw-d4748fdb
+Runs: 66 across 1 shard(s)
+Seed: 42 (resubmit this seed to replay the same draw)
+Poll with get_sweep_status using sweepId="sw-d4748fdb".
+
+> get_sweep_status sweepId=sw-d4748fdb topN=3
+Sweep sw-d4748fdb: COMPLETED
+Objective: sharpe | Order: ranked | Ranking applied: plateau
+Progress: 66/66 runs
+PBO: 0.320 over 8 splits — probability the in-sample winner lands below median out-of-sample; ...
+
+Leaderboard: showing 3 of 25 rows carried by the platform's response; it reports 66 row(s)
+available and flags its own leaderboard as truncated. 22 carried row(s) not shown — raise topN.
+#1 runIx=41  plateau=1.4000 (neighbours=4)  sharpe=1.6000  dSharpe=0.9700  pnl=150.0000  trades=90
+#2 runIx=17  plateau=1.3700 (neighbours=3)  sharpe=1.5700  dSharpe=0.9500  pnl=146.0000  trades=89
+#3 runIx=52  plateau=1.3400 (neighbours=4)  sharpe=1.5400  dSharpe=0.9300  pnl=142.0000  trades=88
+
+> get_sweep_sensitivity sweepId=sw-d4748fdb
+Marginals (one axis at a time, every other axis collapsed):
+rsiPeriod:
+  7.0 → best 1.5000  mean 0.9000  worst 0.2000  (n=4)
+  ...
+stopLossPct:
+  1 → best 1.5000  mean 0.9000  worst 0.2000  (n=4)
+  ...
 ```
 
 ## Strategy format
