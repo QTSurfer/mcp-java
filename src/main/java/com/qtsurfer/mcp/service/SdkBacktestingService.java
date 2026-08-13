@@ -36,8 +36,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@link BacktestingService} backed by an {@link AuthenticatedClient} (sdk-java). Job and sweep
  * handles are kept in memory for the lifetime of the process.
  *
- * <p>The {@code AuthenticatedClient} owns the apikey → JWT exchange and transparently
- * refreshes the token on 401, so this service never touches the bearer token directly.
+ * <p>The {@code AuthenticatedClient} owns the apikey → JWT exchange and proactively
+ * re-mints the token shortly before its known TTL elapses, plus refreshes and retries
+ * once on an unexpected 401 — but only for calls routed through {@code AuthenticatedClient}
+ * itself, which here is just {@link #submitBacktest}'s compile step. The prepare/execute/poll
+ * stages after it run through the {@code Strategy}/{@code Backtest} handles returned by
+ * compile, which hold their own reference to the workflow and do not go through
+ * {@code AuthenticatedClient}'s refresh policy — a session idle long enough mid-poll can
+ * still see a stale-token failure there. This service never touches the bearer token
+ * directly either way.
  *
  * <p>Submit flow: compile → prepare+execute (async). {@link #submitBacktest} blocks only on
  * compilation (fast), then continues prepare+execute in the background. The returned job ID can
