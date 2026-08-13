@@ -26,7 +26,7 @@ import javax.net.ssl.X509TrustManager;
  *   java -jar qtsurfer-mcp-java.jar [options]
  *
  *   Options:
- *     --url    &lt;base-url&gt;  API base URL  (default: https://api.qtsurfer.com/v1
+ *     --url    &lt;base-url&gt;  API base URL  (default: https://api.qtsurfer.net/v1
  *                           or QTS_URL env var)
  *     --apikey &lt;key&gt;       Long-lived API key (default: QTSURFER_APIKEY env var)
  *     --stub                Use the in-memory stub instead of the real SDK
@@ -57,7 +57,7 @@ public class Main {
 
   private static final Logger log = LoggerFactory.getLogger(Main.class);
 
-  private static final String DEFAULT_URL = "https://api.qtsurfer.com/v1";
+  private static final String DEFAULT_URL = "https://api.qtsurfer.net/v1";
 
   /** Counts how many times an authenticated session is minted — used by tests. */
   static final java.util.concurrent.atomic.AtomicInteger authCount =

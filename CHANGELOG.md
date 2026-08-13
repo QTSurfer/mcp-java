@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.3] — 2026-08-13
+
+### Fixed 🐛
+
+- **Default `--url` no longer points at a dead domain.** `api.qtsurfer.com` — the compiled-in
+  default and every doc example that relies on it — is a dead Vercel deployment
+  (`x-vercel-error: DEPLOYMENT_NOT_FOUND`). Every new user hit it before finding the working
+  `api.qtsurfer.net` (undocumented until now). Default and README updated to `api.qtsurfer.net`.
+
 ## [0.10.2] — 2026-08-13
 
 ### Added ✨

@@ -143,7 +143,7 @@ Usage: qtsurfer-mcp [options]        # native binary
        java -jar qtsurfer-mcp-java.jar [options]  # fat JAR
 
 Options:
-  --url    <base-url>  API base URL (default: https://api.qtsurfer.com/v1)
+  --url    <base-url>  API base URL (default: https://api.qtsurfer.net/v1)
                        Override with QTS_URL env var
   --apikey <key>       Long-lived API key
                        (default: QTSURFER_APIKEY env var)
