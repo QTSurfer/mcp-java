@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyElevenTools() {
-    assertThat(tools).hasSize(11);
+  void registersExactlyTwelveTools() {
+    assertThat(tools).hasSize(12);
   }
 
   @Test
@@ -63,7 +63,7 @@ class McpToolsTest {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
         "version", "list_exchanges", "list_instruments", "submit_backtest",
-        "get_job_status", "get_equity_curve", "list_jobs",
+        "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity");
   }
 
@@ -174,6 +174,28 @@ class McpToolsTest {
 
     var status = call("get_job_status", Map.of("jobId", jobId));
     assertThat(textOf(status)).contains(jobId, "ETH/USDT");
+  }
+
+  // ---- cancel_backtest ------------------------------------------------------
+
+  @Test
+  void cancelBacktestStopsARunningJobOnceAndThenReportsNothingToStop() {
+    var submitted = call("submit_backtest", Map.of(
+        "strategyCode", "// c", "exchangeId", "binance",
+        "instrument", "BTC/USDT", "from", "2024-01-01", "to", "2024-01-31"));
+    String text = textOf(submitted);
+    String jobId = text.substring(text.indexOf("bt-"), text.indexOf("bt-") + 11);
+
+    assertThat(textOf(call("cancel_backtest", Map.of("jobId", jobId))))
+        .contains("Cancellation requested");
+    assertThat(textOf(call("cancel_backtest", Map.of("jobId", jobId))))
+        .contains("was not running");
+  }
+
+  @Test
+  void cancelBacktestReportsAnUnknownJob() {
+    assertThat(textOf(call("cancel_backtest", Map.of("jobId", "bt-unknown"))))
+        .contains("was not submitted in this session");
   }
 
   // ---- list_jobs ----------------------------------------------------------

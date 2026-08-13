@@ -227,6 +227,13 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
+  public boolean cancelBacktest(String jobId) {
+    SessionJob job = jobs.get(jobId);
+    if (job == null || job.status() != JobStatus.EXECUTING) return false;
+    return job.backtest().cancel();
+  }
+
+  @Override
   public List<JobSummary> listJobs(JobStatus status) {
     List<JobSummary> result = new ArrayList<>();
     for (SessionJob job : jobs.values()) {

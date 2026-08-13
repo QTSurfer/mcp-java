@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-08-13
+
+### Added ✨
+
+- **`cancel_backtest` tool.** A backtest stuck in `EXECUTING` had no way to stop it — only sweeps
+  had a cancel tool, even though the backend has always exposed a single-backtest cancel endpoint
+  (`DELETE .../execute/{jobId}`) and `sdk-java`'s `Backtest.cancel()` already wraps it. Mirrors
+  `cancel_sweep`: session-scoped (only a job this server submitted has the handle to cancel
+  through), returns whether it stopped a run still in flight or found nothing to stop.
+
 ## [0.10.1] — 2026-08-13
 
 ### Fixed 🐛

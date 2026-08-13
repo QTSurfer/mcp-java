@@ -70,6 +70,7 @@ public final class McpTools {
         listInstruments(service),
         submitBacktest(service),
         getJobStatus(service),
+        cancelBacktest(service),
         getEquityCurve(service),
         listJobs(service),
         submitSweep(service),
@@ -284,6 +285,38 @@ public final class McpTools {
     }
     return "Job " + jobId + " was not submitted in this session and the platform returned nothing "
         + "for it on exchange " + exchangeId + ".";
+  }
+
+  // ---- cancel_backtest ------------------------------------------------------
+
+  private static SyncToolSpecification cancelBacktest(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("cancel_backtest")
+        .description("Ask the platform to stop a backtest submitted in this session. Unlike "
+            + "cancel_sweep, a single backtest has no partial leaderboard to preserve — cancelling "
+            + "one stuck in EXECUTING simply abandons it. Only jobs submitted in this session can "
+            + "be cancelled; a job id from the web app or another session has no local handle to "
+            + "cancel through, whatever get_job_status can read off the platform for it.")
+        .inputSchema(schema(
+            Map.of("jobId", prop("string", "Job ID returned by submit_backtest")),
+            List.of("jobId")))
+        .build();
+    return new SyncToolSpecification(tool,
+        (exchange, request) -> {
+          String jobId = required(request.arguments(), "jobId");
+          try {
+            if (service.cancelBacktest(jobId)) {
+              return text("Cancellation requested for job " + jobId
+                  + ". Poll get_job_status for the platform's confirmation.");
+            }
+            return service.getJobStatus(jobId, null).isPresent()
+                ? text("Job " + jobId + " was not running, so nothing was cancelled. "
+                    + "It had already finished, failed or been cancelled.")
+                : text(jobNotFound(jobId, null));
+          } catch (Exception e) {
+            return error("Failed to cancel job " + jobId + ": " + e.getMessage());
+          }
+        });
   }
 
   // ---- get_equity_curve ---------------------------------------------------

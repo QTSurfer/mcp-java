@@ -70,6 +70,19 @@ public interface BacktestingService {
   Optional<JobSummary> getJobStatus(String jobId, String exchangeId);
 
   /**
+   * Ask the platform to stop a backtest submitted in this session.
+   *
+   * <p>Session-scoped, like {@link #cancelSweep}: the SDK's cancel hook lives on the
+   * {@code Backtest} handle submission returned, so a job id from elsewhere has no handle to
+   * cancel through, regardless of whether {@link #getJobStatus} can read it off the platform.
+   *
+   * @param jobId execution identifier
+   * @return {@code true} if the call stopped a job that was still running, {@code false} if the
+   *         job is unknown to this session or had already reached a terminal state
+   */
+  boolean cancelBacktest(String jobId);
+
+  /**
    * Jobs submitted in this session, optionally filtered by status.
    *
    * <p>Session-scoped by construction: the API exposes no operation that lists a caller's

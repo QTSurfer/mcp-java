@@ -88,6 +88,21 @@ class BacktestingServiceStubTest {
     assertThat(stub.getJobStatus("bt-unknown", null)).isEmpty();
   }
 
+  // ---- cancelBacktest -------------------------------------------------------
+
+  @Test
+  void cancelBacktestIsIdempotentAfterTheFirstCall() {
+    String jobId = stub.submitBacktest("// c", "binance", "BTC/USDT", "2024-01-01", "2024-01-31");
+    assertThat(stub.cancelBacktest(jobId)).isTrue();
+    assertThat(stub.cancelBacktest(jobId)).isFalse();
+    assertThat(stub.getJobStatus(jobId, null).get().status()).isEqualTo(JobStatus.CANCELED);
+  }
+
+  @Test
+  void cancelBacktestReturnsFalseForAnUnknownJob() {
+    assertThat(stub.cancelBacktest("bt-unknown")).isFalse();
+  }
+
   @Test
   void listJobsReturnsAll() {
     stub.submitBacktest("// c", "binance", "BTC/USDT", "2024-01-01", "2024-01-31");

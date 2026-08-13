@@ -104,6 +104,15 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
+  public boolean cancelBacktest(String jobId) {
+    JobSummary job = jobs.get(jobId);
+    if (job == null || job.status() != JobStatus.EXECUTING) return false;
+    jobs.put(jobId, new JobSummary(
+        jobId, job.instrument(), job.exchangeId(), JobStatus.CANCELED, job.submittedAt()));
+    return true;
+  }
+
+  @Override
   public List<JobSummary> listJobs(JobStatus status) {
     List<JobSummary> all = new ArrayList<>(jobs.values());
     if (status != null) all.removeIf(j -> j.status() != status);
