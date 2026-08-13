@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-08-13
+
+### Fixed 🐛
+
+- **Bump `sdk-java` to 0.13.1.** A session left running past the JWT's 1hr `expires_in` window
+  started failing `submit_backtest` with a raw `HTTP 401` surfaced as a compile error, with no
+  automatic recovery. Fixed upstream (`sdk-java` 0.13.1): every call now proactively re-mints the
+  token a short margin ahead of expiry, and `compile`'s `401` — previously unrecognized because
+  it talks to its endpoint directly rather than through the generated client — now retries the
+  same as every other call.
+
 ## [0.10.0] — 2026-08-12
 
 ### Added ✨
