@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyTwelveTools() {
-    assertThat(tools).hasSize(12);
+  void registersExactlyFifteenTools() {
+    assertThat(tools).hasSize(15);
   }
 
   @Test
@@ -64,7 +64,8 @@ class McpToolsTest {
     assertThat(names).containsExactlyInAnyOrder(
         "version", "list_exchanges", "list_instruments", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
-        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity");
+        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity",
+        "list_strategies", "delete_strategy", "get_strategy_code");
   }
 
   // ---- version ------------------------------------------------------------
@@ -285,6 +286,69 @@ class McpToolsTest {
         Map.of("jobId", "bt-curve", "includeEquityCurve", true)))
         .contains("Equity curve")
         .contains("\"totalPoints\":1000");
+  }
+
+  // ---- strategies ----------------------------------------------------------
+
+  private String strategyIdFrom(String submitBacktestResultText) {
+    int at = submitBacktestResultText.indexOf("st-");
+    return submitBacktestResultText.substring(at, at + 11);
+  }
+
+  @Test
+  void listStrategiesEmptyInitially() {
+    assertThat(textOf(call("list_strategies", Map.of()))).contains("No registered strategies");
+  }
+
+  @Test
+  void listStrategiesReturnsAStrategyAfterSubmit() {
+    call("submit_backtest", Map.of(
+        "strategyCode", "// c", "exchangeId", "binance",
+        "instrument", "BTC/USDT", "from", "2024-01-01", "to", "2024-01-31"));
+    assertThat(textOf(call("list_strategies", Map.of()))).contains("st-").contains("compiled");
+  }
+
+  @Test
+  void getStrategyCodeReturnsTheSourceLastRegistered() {
+    call("submit_backtest", Map.of(
+        "strategyCode", "// unique-marker-42", "exchangeId", "binance",
+        "instrument", "BTC/USDT", "from", "2024-01-01", "to", "2024-01-31"));
+    String strategyId = strategyIdFrom(textOf(call("list_strategies", Map.of())));
+    assertThat(textOf(call("get_strategy_code", Map.of("strategyId", strategyId))))
+        .isEqualTo("// unique-marker-42");
+  }
+
+  @Test
+  void getStrategyCodeReportsAnUnknownId() {
+    var result = call("get_strategy_code", Map.of("strategyId", "st-unknown"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("No such strategy");
+  }
+
+  @Test
+  void deleteStrategyRemovesItFromTheList() {
+    call("submit_backtest", Map.of(
+        "strategyCode", "// c", "exchangeId", "binance",
+        "instrument", "BTC/USDT", "from", "2024-01-01", "to", "2024-01-31"));
+    String strategyId = strategyIdFrom(textOf(call("list_strategies", Map.of())));
+
+    assertThat(textOf(call("delete_strategy", Map.of("strategyId", strategyId))))
+        .contains("deleted");
+    assertThat(textOf(call("list_strategies", Map.of()))).contains("No registered strategies");
+  }
+
+  @Test
+  void deleteStrategyReportsAnUnknownId() {
+    var result = call("delete_strategy", Map.of("strategyId", "st-unknown"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("No such strategy");
+  }
+
+  @Test
+  void deleteStrategyRequiresStrategyId() {
+    var result = call("delete_strategy", Map.of());
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("strategyId");
   }
 
   // ---- sweeps -------------------------------------------------------------

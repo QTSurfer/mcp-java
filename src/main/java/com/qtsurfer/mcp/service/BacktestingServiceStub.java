@@ -10,6 +10,7 @@ import com.qtsurfer.api.client.model.SweepMarginal;
 import com.qtsurfer.api.client.model.SweepMarginalPoint;
 import com.qtsurfer.api.client.model.SweepProgress;
 import com.qtsurfer.api.client.model.SweepRunRow;
+import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardFold;
 import com.qtsurfer.api.client.model.WalkForwardResult;
@@ -21,6 +22,7 @@ import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,6 +52,8 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, JobSummary> jobs = new ConcurrentHashMap<>();
   private final Map<String, ExecuteSweepResult> sweeps = new ConcurrentHashMap<>();
   private final Map<String, SweepSensitivity> sensitivities = new ConcurrentHashMap<>();
+  private final Map<String, StrategySummary> strategies = new ConcurrentHashMap<>();
+  private final Map<String, String> strategySource = new ConcurrentHashMap<>();
 
   @Override
   public List<Exchange> listExchanges() {
@@ -85,6 +89,13 @@ public class BacktestingServiceStub implements BacktestingService {
     if (instrument == null || instrument.isBlank()) {
       throw new IllegalArgumentException("instrument is required");
     }
+    String strategyId = "st-" + UUID.randomUUID().toString().substring(0, 8);
+    strategies.put(strategyId, new StrategySummary()
+        .strategyId(strategyId)
+        .compiledAt(OffsetDateTime.now())
+        .requiredSources(List.of()));
+    strategySource.put(strategyId, strategyCode);
+
     String jobId = "bt-" + UUID.randomUUID().toString().substring(0, 8);
     jobs.put(
         jobId,
@@ -117,6 +128,30 @@ public class BacktestingServiceStub implements BacktestingService {
     List<JobSummary> all = new ArrayList<>(jobs.values());
     if (status != null) all.removeIf(j -> j.status() != status);
     return all;
+  }
+
+  // ---- strategies ------------------------------------------------------------
+
+  @Override
+  public List<StrategySummary> listStrategies() {
+    return new ArrayList<>(strategies.values());
+  }
+
+  @Override
+  public void deleteStrategy(String strategyId) {
+    if (strategies.remove(strategyId) == null) {
+      throw new IllegalArgumentException("No such strategy: " + strategyId);
+    }
+    strategySource.remove(strategyId);
+  }
+
+  @Override
+  public String getStrategyCode(String strategyId) {
+    String code = strategySource.get(strategyId);
+    if (code == null) {
+      throw new IllegalArgumentException("No such strategy: " + strategyId);
+    }
+    return code;
   }
 
   // ---- sweeps ---------------------------------------------------------------

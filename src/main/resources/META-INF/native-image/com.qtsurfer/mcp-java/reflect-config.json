@@ -319,6 +319,18 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.DeleteStrategy200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.DeleteStrategy200Response$DeletedEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.EquityPoint",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -403,6 +415,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.GetStrategyCode200Response",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.HalLink",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -452,6 +470,12 @@
   },
   {
     "name": "com.qtsurfer.api.client.model.JobState$StatusEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ListStrategies200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
@@ -536,6 +560,12 @@
   },
   {
     "name": "com.qtsurfer.api.client.model.StrategyState$ValidationEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.StrategySummary",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true

@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.4] — 2026-08-20
+
+### Added ✨
+
+- **Three strategy-management tools: `list_strategies`, `delete_strategy`, `get_strategy_code`.**
+  `sdk-java` gained these in 0.14.0 (spec 0.109.1) but the server never exposed them, so an
+  agent could compile and run a strategy via `submit_backtest` and then had no way to see what
+  it had registered, read the source back, or release it. `list_strategies` is account-scoped
+  rather than session-scoped like `list_jobs`: it answers for strategies compiled through any
+  client, not just this server's own calls, because the platform has no cheaper way to address
+  "strategies I registered" than "strategies this account registered".
+- **Bump `sdk-java` to 0.14.1** (`api-client-java` 0.10.1, spec 0.109.2). Brings the
+  `StrategySummary` rename that fixed `listStrategies()`'s awkward generated element type — see
+  `sdk-java`'s own changelog.
+
 ## [0.10.3] — 2026-08-13
 
 ### Fixed 🐛

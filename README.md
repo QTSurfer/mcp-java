@@ -167,6 +167,9 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `get_sweep_status` | Progress and a capped, plateau-ranked leaderboard for a sweep |
 | `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
 | `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
+| `list_strategies` | List every strategy registered under this account, most recently compiled first |
+| `delete_strategy` | Release a registered strategy |
+| `get_strategy_code` | Fetch the exact source last registered for a strategy id |
 
 ### Sweeps
 

@@ -38,8 +38,8 @@ class McpServerIT {
   }
 
   @Test
-  void registersExactlyTwelveTools() {
-    assertThat(runner.getServer().listTools()).hasSize(12);
+  void registersExactlyFifteenTools() {
+    assertThat(runner.getServer().listTools()).hasSize(15);
   }
 
   @Test
@@ -48,7 +48,8 @@ class McpServerIT {
     assertThat(names).containsExactlyInAnyOrder(
         "version", "list_exchanges", "list_instruments", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
-        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity");
+        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity",
+        "list_strategies", "delete_strategy", "get_strategy_code");
   }
 
   @Test

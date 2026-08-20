@@ -4,6 +4,7 @@ import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
+import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
@@ -132,4 +133,43 @@ public interface BacktestingService {
    * @return empty when the sweep is unknown to this session
    */
   Optional<SweepSensitivity> getSweepSensitivity(String sweepId, SweepObjective objective);
+
+  // ---- strategies ------------------------------------------------------------
+
+  /**
+   * List every strategy registered under the account behind this session's API key, most
+   * recently compiled first. Unlike jobs and sweeps this is account-scoped, not session-scoped:
+   * it answers for strategies compiled through any client, not just this session's calls.
+   *
+   * <p>Deliberately cheaper than reading each strategy individually: every entry carries the
+   * same {@code compiledAt} / {@code requiredSources} provenance a full strategy state would,
+   * but not validation state, so listing stays cheap no matter how many strategies exist.
+   *
+   * @return the caller's registered strategies; empty when the account has none, never an error
+   */
+  List<StrategySummary> listStrategies();
+
+  /**
+   * Release a registered strategy. Not undone by recompiling the same source afterward — that
+   * registers a brand-new strategy under a new id, it does not "undelete" this one. Backtests
+   * already run against this strategy are completely unaffected.
+   *
+   * @param strategyId id of a registered strategy
+   * @throws IllegalArgumentException on invalid input
+   * @throws RuntimeException if the platform has no such strategy for this caller, or on backend
+   *         error
+   */
+  void deleteStrategy(String strategyId);
+
+  /**
+   * Fetch the exact source last registered for a strategy id — the same text originally
+   * compiled, whitespace and comments included.
+   *
+   * @param strategyId id of a registered strategy
+   * @return the raw strategy source last registered for this id
+   * @throws IllegalArgumentException on invalid input
+   * @throws RuntimeException if the platform has no such strategy for this caller, or on backend
+   *         error
+   */
+  String getStrategyCode(String strategyId);
 }

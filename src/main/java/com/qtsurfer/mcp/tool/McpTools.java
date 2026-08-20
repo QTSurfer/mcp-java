@@ -15,6 +15,7 @@ import com.qtsurfer.api.client.model.SweepMarginal;
 import com.qtsurfer.api.client.model.SweepMarginalPoint;
 import com.qtsurfer.api.client.model.SweepProgress;
 import com.qtsurfer.api.client.model.SweepRunRow;
+import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardResult;
 import com.qtsurfer.api.sdk.ParamAxis;
@@ -76,7 +77,10 @@ public final class McpTools {
         submitSweep(service),
         getSweepStatus(service),
         cancelSweep(service),
-        getSweepSensitivity(service));
+        getSweepSensitivity(service),
+        listStrategies(service),
+        deleteStrategy(service),
+        getStrategyCode(service));
   }
 
   // ---- version ------------------------------------------------------------
@@ -865,6 +869,97 @@ public final class McpTools {
     if (mean != null) sb.append(String.format(Locale.ROOT, "  mean %.4f", mean));
     if (worst != null) sb.append(String.format(Locale.ROOT, "  worst %.4f", worst));
     if (count != null) sb.append("  (n=").append(count).append(')');
+  }
+
+  // ---- list_strategies ------------------------------------------------------
+
+  private static SyncToolSpecification listStrategies(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("list_strategies")
+        .description("List every strategy registered under this account, most recently compiled "
+            + "first. Account-scoped, not session-scoped — unlike list_jobs, this answers for "
+            + "strategies compiled through any client, not just this session's submit_backtest "
+            + "calls. Omits validation state to stay cheap regardless of how many are registered. "
+            + "Use the returned strategyId with delete_strategy or get_strategy_code. "
+            + "An empty list means the account has none registered — not an error.")
+        .inputSchema(emptySchema())
+        .build();
+    return new SyncToolSpecification(tool,
+        (exchange, request) -> {
+          try {
+            List<StrategySummary> strategies = service.listStrategies();
+            if (strategies.isEmpty()) return text("No registered strategies.");
+            StringBuilder sb = new StringBuilder(
+                "Registered strategies (" + strategies.size() + "):\n");
+            strategies.forEach(s -> {
+              sb.append("- ").append(s.getStrategyId());
+              if (s.getCompiledAt() != null) {
+                sb.append("  compiled ").append(s.getCompiledAt());
+              }
+              if (s.getRequiredSources() != null && !s.getRequiredSources().isEmpty()) {
+                sb.append("  needs ").append(String.join(", ", s.getRequiredSources()));
+              }
+              sb.append('\n');
+            });
+            return text(sb.toString().stripTrailing());
+          } catch (Exception e) {
+            return error("Failed to list strategies: " + e.getMessage());
+          }
+        });
+  }
+
+  // ---- delete_strategy --------------------------------------------------------
+
+  private static SyncToolSpecification deleteStrategy(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("delete_strategy")
+        .description("Release a registered strategy. Backtests already run against it are "
+            + "completely unaffected — deletion only stops the strategy counting against the "
+            + "account and stops future validation or re-run under this id. Recompiling identical "
+            + "source afterward registers a brand-new strategy under a new id; it does not "
+            + "\"undelete\" this one.")
+        .inputSchema(schema(
+            Map.of("strategyId", prop("string",
+                "Strategy ID, e.g. from list_strategies")),
+            List.of("strategyId")))
+        .build();
+    return new SyncToolSpecification(tool,
+        (exchange, request) -> {
+          try {
+            String strategyId = required(request.arguments(), "strategyId");
+            service.deleteStrategy(strategyId);
+            return text("Strategy " + strategyId + " deleted.");
+          } catch (IllegalArgumentException e) {
+            return error(e.getMessage());
+          } catch (Exception e) {
+            return error("Failed to delete strategy: " + e.getMessage());
+          }
+        });
+  }
+
+  // ---- get_strategy_code -------------------------------------------------------
+
+  private static SyncToolSpecification getStrategyCode(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("get_strategy_code")
+        .description("Fetch the exact source last registered for a strategy id — the same text "
+            + "originally compiled, whitespace and comments included.")
+        .inputSchema(schema(
+            Map.of("strategyId", prop("string",
+                "Strategy ID, e.g. from list_strategies")),
+            List.of("strategyId")))
+        .build();
+    return new SyncToolSpecification(tool,
+        (exchange, request) -> {
+          try {
+            String strategyId = required(request.arguments(), "strategyId");
+            return text(service.getStrategyCode(strategyId));
+          } catch (IllegalArgumentException e) {
+            return error(e.getMessage());
+          } catch (Exception e) {
+            return error("Failed to fetch strategy code: " + e.getMessage());
+          }
+        });
   }
 
   // ---- sweep argument parsing ---------------------------------------------

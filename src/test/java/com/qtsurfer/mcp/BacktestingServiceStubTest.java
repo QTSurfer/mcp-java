@@ -117,6 +117,47 @@ class BacktestingServiceStubTest {
     assertThat(stub.listJobs(JobStatus.COMPLETED)).isEmpty();
   }
 
+  // ---- strategies ----------------------------------------------------------
+
+  @Test
+  void listStrategiesEmptyInitially() {
+    assertThat(stub.listStrategies()).isEmpty();
+  }
+
+  @Test
+  void submitBacktestRegistersAStrategy() {
+    stub.submitBacktest("// code", "binance", "BTC/USDT", "2024-01-01", "2024-01-31");
+    assertThat(stub.listStrategies()).hasSize(1);
+    assertThat(stub.listStrategies().get(0).getStrategyId()).startsWith("st-");
+  }
+
+  @Test
+  void getStrategyCodeReturnsTheSourceLastRegistered() {
+    stub.submitBacktest("// marker", "binance", "BTC/USDT", "2024-01-01", "2024-01-31");
+    String strategyId = stub.listStrategies().get(0).getStrategyId();
+    assertThat(stub.getStrategyCode(strategyId)).isEqualTo("// marker");
+  }
+
+  @Test
+  void getStrategyCodeThrowsForAnUnknownId() {
+    assertThatThrownBy(() -> stub.getStrategyCode("st-unknown"))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("st-unknown");
+  }
+
+  @Test
+  void deleteStrategyRemovesItFromTheList() {
+    stub.submitBacktest("// code", "binance", "BTC/USDT", "2024-01-01", "2024-01-31");
+    String strategyId = stub.listStrategies().get(0).getStrategyId();
+    stub.deleteStrategy(strategyId);
+    assertThat(stub.listStrategies()).isEmpty();
+  }
+
+  @Test
+  void deleteStrategyThrowsForAnUnknownId() {
+    assertThatThrownBy(() -> stub.deleteStrategy("st-unknown"))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("st-unknown");
+  }
+
   // ---- sweeps -------------------------------------------------------------
 
   private static SweepRequest sweepRequest(int folds) {

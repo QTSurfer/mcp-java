@@ -6,6 +6,7 @@ import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.api.client.model.JobState;
 import com.qtsurfer.api.client.model.ResultMap;
+import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
@@ -279,6 +280,23 @@ public class SdkBacktestingService implements BacktestingService {
   public Optional<SweepSensitivity> getSweepSensitivity(String sweepId, SweepObjective objective) {
     Sweep sweep = sweeps.get(sweepId);
     return sweep == null ? Optional.empty() : Optional.of(sweep.sensitivity(objective));
+  }
+
+  // ---- strategies ------------------------------------------------------------
+
+  @Override
+  public List<StrategySummary> listStrategies() {
+    return qts.listStrategies();
+  }
+
+  @Override
+  public void deleteStrategy(String strategyId) {
+    qts.deleteStrategy(strategyId);
+  }
+
+  @Override
+  public String getStrategyCode(String strategyId) {
+    return qts.getStrategyCode(strategyId);
   }
 
   private static String rootMessage(Throwable t) {
