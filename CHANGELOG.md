@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.5] — 2026-08-25
+
+### Changed 🔄
+
+- **Bump `sdk-java` to 0.15.0** (`api-client-java` 0.11.0, spec 0.110.1). Mechanical only — no
+  tool surface or behavior change in this server. `sdk-java` 0.15.0 adds backtesting/sweeping
+  against a caller-uploaded dataset (`datasetId` on `BacktestRequest`/`SweepRequest`), but
+  `submit_backtest` and `submit_sweep` still only accept an `instrument`: dataset upload has no
+  natural fit for an agent calling tools over stdio JSON-RPC (it needs a presigned-URL upload
+  step outside the request/response cycle), and dataset management itself is not yet exposed by
+  `sdk-java` either. Deliberately deferred, not silently missing.
+
 ## [0.10.4] — 2026-08-20
 
 ### Added ✨
