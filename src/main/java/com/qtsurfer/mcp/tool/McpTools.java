@@ -18,12 +18,19 @@ import com.qtsurfer.api.client.model.SweepRunRow;
 import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardResult;
+import com.qtsurfer.api.client.model.EquityCurveOptions;
+import com.qtsurfer.api.client.model.EquityCurveRequest;
+import com.qtsurfer.api.client.model.EquityCurveOutMode;
 import com.qtsurfer.api.sdk.ParamAxis;
+import com.qtsurfer.api.sdk.BacktestRequest;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.SweepSampler;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
 import com.qtsurfer.mcp.model.EquityPoint;
+import com.qtsurfer.mcp.model.DatasetSummary;
+import com.qtsurfer.mcp.model.DatasetUploadResult;
+import com.qtsurfer.mcp.model.DatasetUploadStatus;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.service.BacktestingService;
@@ -67,6 +74,12 @@ public final class McpTools {
   public static List<SyncToolSpecification> build(BacktestingService service, String apiUrl) {
     return List.of(
         version(apiUrl),
+        uploadDataset(service),
+        listDatasets(service),
+        getDataset(service),
+        getDatasetUpload(service),
+        finalizeDatasetUpload(service),
+        deleteDataset(service),
         listExchanges(service),
         listInstruments(service),
         submitBacktest(service),
@@ -81,6 +94,147 @@ public final class McpTools {
         listStrategies(service),
         deleteStrategy(service),
         getStrategyCode(service));
+  }
+
+  // ---- datasets ------------------------------------------------------------
+
+  private static SyncToolSpecification uploadDataset(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("upload_dataset")
+        .description("Create a caller-owned dataset or upload its next version from a local file, then "
+            + "start asynchronous ingest. File access is disabled unless the server operator configured "
+            + "an upload root; filePath must resolve beneath it. Never pass URLs or file contents. "
+            + "When datasetId is absent, name and instrument are required. Returns ids only, never a "
+            + "presigned storage URL; poll with get_dataset_upload.")
+        .inputSchema(schema(Map.of(
+            "datasetId", prop("string", "Existing dataset id for a new version; omit to create one"),
+            "name", prop("string", "Dataset name; required when datasetId is omitted"),
+            "instrument", prop("string", "CCXT instrument, e.g. BTC/USDT; required for a new dataset"),
+            "filePath", prop("string", "Local CSV path beneath the server's configured upload root")),
+            List.of("filePath")))
+        .build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        DatasetUploadResult result = service.uploadDataset(optional(args, "datasetId"), optional(args, "name"),
+            optional(args, "instrument"), required(args, "filePath"));
+        return text("Dataset upload accepted. datasetId=" + result.datasetId()
+            + " uploadId=" + result.uploadId() + " ingestJobId=" + result.ingestJobId()
+            + " bytes=" + result.bytes() + "\nPoll get_dataset_upload with datasetId and uploadId.");
+      } catch (IllegalArgumentException | IllegalStateException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Dataset upload failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification listDatasets(BacktestingService service) {
+    Tool tool = Tool.builder().name("list_datasets")
+        .description("List datasets owned by the authenticated account. A dataset becomes runnable only "
+            + "after get_dataset_upload reports READY with a version.")
+        .inputSchema(emptySchema()).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        List<DatasetSummary> datasets = service.listDatasets();
+        if (datasets.isEmpty()) return text("No datasets found for this account.");
+        return text(datasets.stream().map(McpTools::formatDataset).collect(java.util.stream.Collectors.joining("\n")));
+      } catch (Exception e) {
+        return error("Failed to list datasets: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getDataset(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_dataset")
+        .description("Read metadata and current ready version for one caller-owned dataset.")
+        .inputSchema(schema(Map.of("datasetId", prop("string", "Dataset id")), List.of("datasetId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      String datasetId = required(request.arguments(), "datasetId");
+      try {
+        return service.getDataset(datasetId).map(McpTools::formatDataset)
+            .map(McpTools::text).orElseGet(() -> text("Dataset not found: " + datasetId));
+      } catch (Exception e) {
+        return error("Failed to get dataset: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getDatasetUpload(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_dataset_upload")
+        .description("Poll dataset ingest after upload_dataset or finalize_dataset_upload. READY carries "
+            + "the usable version; FAILED means upload a corrected new version.")
+        .inputSchema(schema(Map.of(
+            "datasetId", prop("string", "Dataset id"),
+            "uploadId", prop("string", "Upload id returned by upload_dataset")),
+            List.of("datasetId", "uploadId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      String datasetId = required(request.arguments(), "datasetId");
+      String uploadId = required(request.arguments(), "uploadId");
+      try {
+        return service.getDatasetUpload(datasetId, uploadId).map(McpTools::formatUploadStatus)
+            .map(McpTools::text).orElseGet(() -> text("Dataset upload not found."));
+      } catch (Exception e) {
+        return error("Failed to read dataset upload: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification finalizeDatasetUpload(BacktestingService service) {
+    Tool tool = Tool.builder().name("finalize_dataset_upload")
+        .description("Retry the finalization step only after a file PUT succeeded but the original MCP "
+            + "call failed before returning. It never accepts or exposes an upload URL.")
+        .inputSchema(schema(Map.of(
+            "datasetId", prop("string", "Dataset id"),
+            "uploadId", prop("string", "Upload id")), List.of("datasetId", "uploadId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        String datasetId = required(request.arguments(), "datasetId");
+        String uploadId = required(request.arguments(), "uploadId");
+        String jobId = service.finalizeDatasetUpload(datasetId, uploadId);
+        return text("Dataset ingest finalization accepted. ingestJobId=" + jobId);
+      } catch (Exception e) {
+        return error("Failed to finalize dataset upload: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification deleteDataset(BacktestingService service) {
+    Tool tool = Tool.builder().name("delete_dataset")
+        .description("Delete a caller-owned dataset and its versions. This cannot be undone.")
+        .inputSchema(schema(Map.of("datasetId", prop("string", "Dataset id to delete")),
+            List.of("datasetId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        String datasetId = required(request.arguments(), "datasetId");
+        service.deleteDataset(datasetId);
+        return text("Dataset deleted: " + datasetId);
+      } catch (Exception e) {
+        return error("Failed to delete dataset: " + e.getMessage());
+      }
+    });
+  }
+
+  private static String formatDataset(DatasetSummary dataset) {
+    return "Dataset " + dataset.datasetId() + ": " + dataset.name() + " | instrument=" + dataset.instrument()
+        + " | currentVersion=" + valueOrUnknown(dataset.currentVersionId()) + " | range="
+        + valueOrUnknown(dataset.from()) + " → " + valueOrUnknown(dataset.to()) + " | cadence="
+        + valueOrUnknown(dataset.cadence());
+  }
+
+  private static String formatUploadStatus(DatasetUploadStatus upload) {
+    String value = "Dataset upload " + upload.uploadId() + ": " + upload.status() + " | ingestJobId="
+        + valueOrUnknown(upload.ingestJobId());
+    if (upload.versionId() != null) {
+      value += " | version=" + upload.versionId() + " | rows=" + valueOrUnknown(upload.rows())
+          + " | bytes=" + valueOrUnknown(upload.bytes()) + " | cadence=" + valueOrUnknown(upload.cadence())
+          + " | gaps=" + valueOrUnknown(upload.gaps());
+    }
+    return value;
+  }
+
+  private static String valueOrUnknown(Object value) {
+    return value == null ? "unknown" : value.toString();
   }
 
   // ---- version ------------------------------------------------------------
@@ -192,7 +346,7 @@ public final class McpTools {
         .name("submit_backtest")
         .description("Compile a Java strategy and queue a backtesting run on QTSurfer. "
             + "Returns the job ID immediately — poll with get_job_status. "
-            + "Call list_instruments first to choose a valid exchangeId and instrument. "
+            + "Provide either exchangeId plus instrument, or datasetId (the server derives exchangeId=user). "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
             + "calling this in a loop.")
         .inputSchema(schema(
@@ -200,23 +354,26 @@ public final class McpTools {
                 "strategyCode", prop("string",
                     "Complete Java source of the strategy class to compile and run"),
                 "exchangeId",   prop("string",
-                    "Exchange identifier, e.g. 'binance' (spot) or 'binancefutures' (perps)"),
+                    "Exchange identifier for an instrument source; omit for datasetId"),
                 "instrument",   prop("string",
-                    "CCXT instrument symbol, e.g. 'BTC/USDT' (spot) or 'BTC/USDT:USDT' (perp)"),
+                    "CCXT instrument symbol; mutually exclusive with datasetId"),
+                "datasetId", prop("string", "Ready caller-uploaded dataset id; mutually exclusive with instrument"),
+                "datasetVersionId", prop("string", "Optional historical version of datasetId"),
                 "from",         prop("string", "Backtest start date, ISO-8601 (e.g. 2024-01-01)"),
-                "to",           prop("string", "Backtest end date, ISO-8601 (e.g. 2024-03-31)")),
-            List.of("strategyCode", "exchangeId", "instrument", "from", "to")))
+                "to",           prop("string", "Backtest end date, ISO-8601 (e.g. 2024-03-31)"),
+                "equityCurve", prop("object", "Optional {resample,differential,outMode}; outMode is array, short or url")),
+            List.of("strategyCode", "from", "to")))
         .build();
     return new SyncToolSpecification(tool,
         (exchange, request) -> {
           try {
             Map<String, Object> args = request.arguments();
-            String jobId = service.submitBacktest(
-                required(args, "strategyCode"),
-                required(args, "exchangeId"),
-                required(args, "instrument"),
-                required(args, "from"),
-                required(args, "to"));
+            BacktestRequest.Builder builder = BacktestRequest.builder()
+                .strategy(required(args, "strategyCode")).from(required(args, "from")).to(required(args, "to"));
+            configureBacktestSource(builder, args);
+            EquityCurveOptions equityCurve = parseBacktestCurve(args.get("equityCurve"));
+            if (equityCurve != null) builder.equityCurve(equityCurve);
+            String jobId = service.submitBacktest(builder.build());
             return text("Backtest submitted. Job ID: " + jobId
                 + "\nUse get_job_status with jobId=\"" + jobId + "\" to poll results.");
           } catch (IllegalArgumentException e) {
@@ -413,7 +570,7 @@ public final class McpTools {
   private static SyncToolSpecification submitSweep(BacktestingService service) {
     Tool tool = Tool.builder()
         .name("submit_sweep")
-        .description("Run one strategy over a grid of parameter settings on one instrument and "
+        .description("Run one strategy over a grid of parameter settings on an instrument or ready dataset and "
             + "window, scored and ranked against a single objective. Use this rather than calling "
             + "submit_backtest in a loop: the platform schedules the whole grid as one job and "
             + "computes the ranking, the plateau scores, the deflated Sharpe per row and the "
@@ -434,9 +591,11 @@ public final class McpTools {
                     "Complete Java source of the strategy class. Compiled once and reused by every "
                         + "trial; the swept names must be settable properties on it."),
                 "exchangeId", prop("string",
-                    "Exchange identifier, e.g. 'binance' (spot) or 'binancefutures' (perps)"),
+                    "Exchange identifier for an instrument source; omit for datasetId"),
                 "instrument", prop("string",
-                    "CCXT instrument symbol, e.g. 'BTC/USDT' (spot) or 'BTC/USDT:USDT' (perp)"),
+                    "CCXT instrument symbol; mutually exclusive with datasetId"),
+                "datasetId", prop("string", "Ready caller-uploaded dataset id; mutually exclusive with instrument"),
+                "datasetVersionId", prop("string", "Optional historical version of datasetId"),
                 "from", prop("string", "Sweep window start, ISO-8601 (e.g. 2024-01-01)"),
                 "to", prop("string", "Sweep window end, ISO-8601 (e.g. 2024-03-31)"),
                 "params", Map.of(
@@ -467,8 +626,10 @@ public final class McpTools {
                         + "into 5 chained folds, picks the winner in-sample on each and scores it on "
                         + "the fold's unseen tail; optional \"inSamplePct\" (10..90) sets the split. "
                         + "folds must be at least 2. The answer is then one row per fold rather than "
-                        + "a ranked grid.")),
-            List.of("strategyCode", "exchangeId", "instrument", "from", "to", "params")))
+                        + "a ranked grid."),
+                "equityCurve", prop("object", "Optional {mode,n,maxPct,resample,differential,outMode}; "
+                    + "controls retained sweep-run curves.")),
+            List.of("strategyCode", "from", "to", "params")))
         .build();
     return new SyncToolSpecification(tool,
         (exchange, request) -> {
@@ -476,11 +637,10 @@ public final class McpTools {
             Map<String, Object> args = request.arguments();
             SweepRequest.Builder builder = SweepRequest.builder()
                 .strategy(required(args, "strategyCode"))
-                .exchangeId(required(args, "exchangeId"))
-                .instrument(required(args, "instrument"))
                 .from(required(args, "from"))
                 .to(required(args, "to"))
                 .params(parseParams(args.get("params")));
+            configureSweepSource(builder, args);
             String objective = optional(args, "objective");
             if (objective != null) builder.objective(parseObjective(objective));
             String sampler = optional(args, "sampler");
@@ -491,6 +651,8 @@ public final class McpTools {
             if (seed != null) builder.seed(seed.longValue());
             WalkForwardSpec walkForward = parseWalkForward(args.get("walkForward"));
             if (walkForward != null) builder.walkForward(walkForward);
+            EquityCurveRequest equityCurve = parseSweepCurve(args.get("equityCurve"));
+            if (equityCurve != null) builder.equityCurve(equityCurve);
 
             ExecuteSweepAccepted accepted = service.submitSweep(builder.build());
             return text(formatAccepted(accepted));
@@ -1154,6 +1316,84 @@ public final class McpTools {
   }
 
   // ---- helpers ------------------------------------------------------------
+
+  private static void configureBacktestSource(BacktestRequest.Builder builder, Map<String, Object> args) {
+    String datasetId = optional(args, "datasetId");
+    String instrument = optional(args, "instrument");
+    if ((datasetId == null) == (instrument == null)) {
+      throw new IllegalArgumentException("Provide exactly one of instrument or datasetId");
+    }
+    if (datasetId != null) {
+      builder.exchangeId("user").datasetId(datasetId);
+      String versionId = optional(args, "datasetVersionId");
+      if (versionId != null) builder.datasetVersionId(versionId);
+    } else {
+      builder.exchangeId(required(args, "exchangeId")).instrument(instrument);
+    }
+  }
+
+  private static void configureSweepSource(SweepRequest.Builder builder, Map<String, Object> args) {
+    String datasetId = optional(args, "datasetId");
+    String instrument = optional(args, "instrument");
+    if ((datasetId == null) == (instrument == null)) {
+      throw new IllegalArgumentException("Provide exactly one of instrument or datasetId");
+    }
+    if (datasetId != null) {
+      builder.exchangeId("user").datasetId(datasetId);
+      String versionId = optional(args, "datasetVersionId");
+      if (versionId != null) builder.datasetVersionId(versionId);
+    } else {
+      builder.exchangeId(required(args, "exchangeId")).instrument(instrument);
+    }
+  }
+
+  private static EquityCurveOptions parseBacktestCurve(Object raw) {
+    Map<String, Object> values = objectMap(raw, "equityCurve");
+    if (values == null) return null;
+    EquityCurveOptions options = new EquityCurveOptions();
+    Integer resample = asInteger(values.get("resample"));
+    if (resample != null) options.resample(resample);
+    if (values.containsKey("differential")) options.differential(asBool(values.get("differential")));
+    String outMode = optional(values, "outMode");
+    if (outMode != null) options.outMode(parseOutMode(outMode));
+    return options;
+  }
+
+  private static EquityCurveRequest parseSweepCurve(Object raw) {
+    Map<String, Object> values = objectMap(raw, "equityCurve");
+    if (values == null) return null;
+    EquityCurveRequest options = new EquityCurveRequest();
+    Integer resample = asInteger(values.get("resample"));
+    if (resample != null) options.resample(resample);
+    if (values.containsKey("differential")) options.differential(asBool(values.get("differential")));
+    String outMode = optional(values, "outMode");
+    if (outMode != null) options.outMode(parseOutMode(outMode));
+    String mode = optional(values, "mode");
+    if (mode != null) options.mode(EquityCurveRequest.ModeEnum.fromValue(mode));
+    Integer n = asInteger(values.get("n"));
+    if (n != null) options.n(n);
+    if (values.get("maxPct") instanceof Number pct) options.maxPct(pct.doubleValue());
+    return options;
+  }
+
+  private static EquityCurveOutMode parseOutMode(String value) {
+    try {
+      return EquityCurveOutMode.fromValue(value);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Unknown equityCurve.outMode '" + value + "': array or short");
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> objectMap(Object raw, String argument) {
+    if (raw == null) return null;
+    if (!(raw instanceof Map<?, ?> map)) {
+      throw new IllegalArgumentException(argument + " must be an object");
+    }
+    Map<String, Object> typed = new LinkedHashMap<>();
+    map.forEach((key, value) -> typed.put(String.valueOf(key), value));
+    return typed;
+  }
 
   private static boolean asBool(Object v) {
     if (v instanceof Boolean b) return b;

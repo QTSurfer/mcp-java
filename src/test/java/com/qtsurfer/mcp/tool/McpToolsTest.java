@@ -54,15 +54,16 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFifteenTools() {
-    assertThat(tools).hasSize(15);
+  void registersExactlyTwentyOneTools() {
+    assertThat(tools).hasSize(21);
   }
 
   @Test
   void toolNamesAreCorrect() {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
-        "version", "list_exchanges", "list_instruments", "submit_backtest",
+        "version", "upload_dataset", "list_datasets", "get_dataset", "get_dataset_upload",
+        "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "delete_strategy", "get_strategy_code");
@@ -83,6 +84,40 @@ class McpToolsTest {
   void allToolsHaveNonBlankDescriptions() {
     tools.forEach(t -> assertThat(t.tool().description())
         .as("description for %s", t.tool().name()).isNotBlank());
+  }
+
+  // ---- datasets ----------------------------------------------------------
+
+  @Test
+  void uploadDatasetCreatesAndStartsIngestWithoutLeakingStorageUrl() {
+    var result = call("upload_dataset", Map.of(
+        "name", "BTC ticks", "instrument", "BTC/USDT", "filePath", "/uploads/btc.csv"));
+
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("datasetId=ds-").contains("uploadId=up-")
+        .contains("ingestJobId=ing-").doesNotContain("http");
+  }
+
+  @Test
+  void uploadDatasetRequiresMetadataForNewDataset() {
+    var result = call("upload_dataset", Map.of("filePath", "/uploads/btc.csv"));
+
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("name and instrument are required");
+  }
+
+  @Test
+  void datasetUploadCanBeReadAfterAtomicUpload() {
+    var upload = call("upload_dataset", Map.of(
+        "name", "BTC ticks", "instrument", "BTC/USDT", "filePath", "/uploads/btc.csv"));
+    String body = textOf(upload);
+    String datasetId = body.substring(body.indexOf("datasetId=") + 10, body.indexOf(" uploadId="));
+    String uploadId = body.substring(body.indexOf("uploadId=") + 9, body.indexOf(" ingestJobId="));
+
+    var status = call("get_dataset_upload", Map.of("datasetId", datasetId, "uploadId", uploadId));
+
+    assertThat(status.isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(status)).contains("INGESTING").doesNotContain("http");
   }
 
   // ---- list_exchanges -----------------------------------------------------

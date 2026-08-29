@@ -1,6 +1,13 @@
 package com.qtsurfer.mcp.service;
 
 import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.model.EquityCurveResult;
+import com.qtsurfer.api.client.model.CreateDatasetRequest;
+import com.qtsurfer.api.client.model.Dataset;
+import com.qtsurfer.api.client.model.DatasetCreated;
+import com.qtsurfer.api.client.model.DatasetUploadSession;
+import com.qtsurfer.api.client.model.DatasetUploadState;
+import com.qtsurfer.api.client.model.DatasetWithLinks;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
@@ -18,6 +25,9 @@ import com.qtsurfer.api.sdk.SweepOptions;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.mcp.model.EquityPoint;
+import com.qtsurfer.mcp.model.DatasetSummary;
+import com.qtsurfer.mcp.model.DatasetUploadResult;
+import com.qtsurfer.mcp.model.DatasetUploadStatus;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -25,6 +35,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +75,7 @@ public class SdkBacktestingService implements BacktestingService {
 
   private final AuthenticatedClient qts;
   private final String baseUrl;
+  private final UploadRoot uploadRoot;
   private final Map<String, SessionJob> jobs = new ConcurrentHashMap<>();
   private final Map<String, Sweep> sweeps = new ConcurrentHashMap<>();
 
@@ -89,8 +103,110 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   public SdkBacktestingService(AuthenticatedClient qts, String baseUrl) {
+    this(qts, baseUrl, null);
+  }
+
+  /** Create the SDK-backed service with an optional operator-approved upload directory. */
+  public SdkBacktestingService(AuthenticatedClient qts, String baseUrl, Path uploadRoot) {
     this.qts = qts;
     this.baseUrl = baseUrl;
+    this.uploadRoot = uploadRoot == null ? null : new UploadRoot(uploadRoot);
+  }
+
+  // ---- datasets -------------------------------------------------------------
+
+  @Override
+  public List<DatasetSummary> listDatasets() {
+    return qts.listDatasets().stream().map(SdkBacktestingService::datasetSummary).toList();
+  }
+
+  @Override
+  public Optional<DatasetSummary> getDataset(String datasetId) {
+    try {
+      return Optional.of(datasetSummary(qts.dataset(datasetId)));
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public void deleteDataset(String datasetId) {
+    qts.deleteDataset(datasetId);
+  }
+
+  @Override
+  public DatasetUploadResult uploadDataset(
+      String datasetId, String name, String instrument, String filePath) {
+    Path file = guardedUploadFile(filePath);
+    try {
+      String targetDatasetId;
+      String uploadId;
+      if (datasetId == null || datasetId.isBlank()) {
+        if (name == null || name.isBlank() || instrument == null || instrument.isBlank()) {
+          throw new IllegalArgumentException("name and instrument are required when datasetId is absent");
+        }
+        DatasetCreated created = qts.createDataset(new CreateDatasetRequest().name(name).instrument(instrument));
+        qts.uploadDatasetFile(created, file);
+        targetDatasetId = created.getDatasetId();
+        uploadId = created.getUploadId();
+      } else {
+        DatasetUploadSession session = qts.openDatasetUpload(datasetId);
+        qts.uploadDatasetFile(session, file);
+        targetDatasetId = datasetId;
+        uploadId = session.getUploadId();
+      }
+      String jobId = qts.finalizeDatasetUpload(targetDatasetId, uploadId).getJobId();
+      return new DatasetUploadResult(targetDatasetId, uploadId, jobId, Files.size(file));
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not read guarded upload file", e);
+    }
+  }
+
+  @Override
+  public Optional<DatasetUploadStatus> getDatasetUpload(String datasetId, String uploadId) {
+    try {
+      DatasetUploadState state = qts.datasetUpload(datasetId, uploadId);
+      return Optional.of(uploadStatus(datasetId, state));
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public String finalizeDatasetUpload(String datasetId, String uploadId) {
+    return qts.finalizeDatasetUpload(datasetId, uploadId).getJobId();
+  }
+
+  private Path guardedUploadFile(String filePath) {
+    if (uploadRoot == null) {
+      throw new IllegalStateException(
+          "Dataset upload is disabled: configure --upload-root or QTSURFER_UPLOAD_ROOT");
+    }
+    return uploadRoot.resolveFile(filePath);
+  }
+
+  private static DatasetSummary datasetSummary(Dataset dataset) {
+    return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
+        dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
+        dataset.getCadence());
+  }
+
+  private static DatasetSummary datasetSummary(DatasetWithLinks dataset) {
+    return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
+        dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
+        dataset.getCadence());
+  }
+
+  private static DatasetUploadStatus uploadStatus(String datasetId, DatasetUploadState state) {
+    var version = state.getVersion();
+    return new DatasetUploadStatus(datasetId, state.getUploadId(), String.valueOf(state.getStatus()),
+        state.getJobId(), version == null ? null : version.getId(), version == null ? null : version.getRows(),
+        version == null ? null : version.getBytes(), version == null ? null : version.getCadence(),
+        version == null ? null : version.getGaps(), version == null ? null : version.getLargestGapSteps());
+  }
+
+  private static String stringify(Object value) {
+    return value == null ? null : value.toString();
   }
 
   @Override
@@ -104,15 +220,7 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
-  public String submitBacktest(
-      String strategyCode, String exchangeId, String instrument, String from, String to) {
-    BacktestRequest sdkRequest = BacktestRequest.builder()
-        .strategy(strategyCode)
-        .exchangeId(exchangeId)
-        .instrument(instrument)
-        .from(from)
-        .to(to)
-        .build();
+  public String submitBacktest(BacktestRequest sdkRequest) {
 
     // Compile first (blocking — fast, gives us early error on bad source)
     com.qtsurfer.api.sdk.Strategy strategy;
@@ -144,8 +252,12 @@ public class SdkBacktestingService implements BacktestingService {
         })
         .exceptionally(err -> { log.warn("Job {} failed: {}", finalJobId, rootMessage(err)); return null; });
 
-    jobs.put(jobId, new SessionJob(jobId, instrument, exchangeId, submittedAt, future, backtest, resultRef));
-    log.info("Submitted backtest {} ({} {} {} → {})", jobId, exchangeId, instrument, from, to);
+    String source = sdkRequest.datasetId() == null ? sdkRequest.instrument()
+        : "dataset:" + sdkRequest.datasetId()
+            + (sdkRequest.datasetVersionId() == null ? "" : ":" + sdkRequest.datasetVersionId());
+    jobs.put(jobId, new SessionJob(jobId, source, sdkRequest.exchangeId(), submittedAt, future, backtest, resultRef));
+    log.info("Submitted backtest {} ({} {} {} → {})", jobId, sdkRequest.exchangeId(), source,
+        sdkRequest.from(), sdkRequest.to());
     return jobId;
   }
 
@@ -214,17 +326,33 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   private static JobResult toJobResult(ResultMap r) {
-    List<EquityPoint> curve = r.getEquityCurve() == null ? List.of()
-        : r.getEquityCurve().stream()
-            .filter(p -> p.getTimestamp() != null && p.getEquity() != null)
-            .map(p -> new EquityPoint(p.getTimestamp(), p.getEquity()))
-            .toList();
+    List<EquityPoint> curve = toEquityPoints(r.getEquityCurve());
     return new JobResult(
         r.getPnlTotal(), r.getTotalTrades(), r.getWinRate(),
         r.getSharpeRatio(), r.getSortinoRatio(), r.getCagr(),
         r.getMaxDrawdown(), r.getMaxDrawdownPercent(),
         r.getSignalCount() != null ? r.getSignalCount().longValue() : null,
         r.getHostName(), r.getIops(), curve);
+  }
+
+  /** Convert either supported inline curve encoding into the MCP's compact point representation. */
+  private static List<EquityPoint> toEquityPoints(EquityCurveResult curve) {
+    if (curve == null) return List.of();
+    if (curve.getPoints() != null) {
+      return curve.getPoints().stream()
+          .filter(point -> point.getTimestamp() != null && point.getEquity() != null)
+          .map(point -> new EquityPoint(point.getTimestamp(), point.getEquity()))
+          .toList();
+    }
+    if (curve.getTimestamps() == null || curve.getEquities() == null) return List.of();
+    int count = Math.min(curve.getTimestamps().size(), curve.getEquities().size());
+    List<EquityPoint> points = new ArrayList<>(count);
+    for (int index = 0; index < count; index++) {
+      Long timestamp = curve.getTimestamps().get(index);
+      Double equity = curve.getEquities().get(index);
+      if (timestamp != null && equity != null) points.add(new EquityPoint(timestamp, equity));
+    }
+    return List.copyOf(points);
   }
 
   @Override

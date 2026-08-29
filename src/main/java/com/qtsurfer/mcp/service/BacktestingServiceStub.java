@@ -20,6 +20,9 @@ import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.mcp.model.DatasetSummary;
+import com.qtsurfer.mcp.model.DatasetUploadResult;
+import com.qtsurfer.mcp.model.DatasetUploadStatus;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -54,6 +57,64 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, SweepSensitivity> sensitivities = new ConcurrentHashMap<>();
   private final Map<String, StrategySummary> strategies = new ConcurrentHashMap<>();
   private final Map<String, String> strategySource = new ConcurrentHashMap<>();
+  private final Map<String, DatasetSummary> datasets = new ConcurrentHashMap<>();
+  private final Map<String, DatasetUploadStatus> uploads = new ConcurrentHashMap<>();
+
+  // ---- datasets -------------------------------------------------------------
+
+  @Override
+  public List<DatasetSummary> listDatasets() {
+    return new ArrayList<>(datasets.values());
+  }
+
+  @Override
+  public Optional<DatasetSummary> getDataset(String datasetId) {
+    return Optional.ofNullable(datasets.get(datasetId));
+  }
+
+  @Override
+  public void deleteDataset(String datasetId) {
+    if (datasets.remove(datasetId) == null) {
+      throw new IllegalArgumentException("No such dataset: " + datasetId);
+    }
+  }
+
+  @Override
+  public DatasetUploadResult uploadDataset(
+      String datasetId, String name, String instrument, String filePath) {
+    String targetDatasetId = datasetId;
+    if (targetDatasetId == null || targetDatasetId.isBlank()) {
+      if (name == null || name.isBlank() || instrument == null || instrument.isBlank()) {
+        throw new IllegalArgumentException("name and instrument are required when datasetId is absent");
+      }
+      targetDatasetId = "ds-" + UUID.randomUUID().toString().substring(0, 8);
+      datasets.put(targetDatasetId, new DatasetSummary(
+          targetDatasetId, name, instrument, null, null, null, null));
+    } else if (!datasets.containsKey(targetDatasetId)) {
+      throw new IllegalArgumentException("No such dataset: " + targetDatasetId);
+    }
+    String uploadId = "up-" + UUID.randomUUID().toString().substring(0, 8);
+    String jobId = "ing-" + UUID.randomUUID().toString().substring(0, 8);
+    uploads.put(uploadKey(targetDatasetId, uploadId), new DatasetUploadStatus(
+        targetDatasetId, uploadId, "INGESTING", jobId, null, null, null, null, null, null));
+    return new DatasetUploadResult(targetDatasetId, uploadId, jobId, 0L);
+  }
+
+  @Override
+  public Optional<DatasetUploadStatus> getDatasetUpload(String datasetId, String uploadId) {
+    return Optional.ofNullable(uploads.get(uploadKey(datasetId, uploadId)));
+  }
+
+  @Override
+  public String finalizeDatasetUpload(String datasetId, String uploadId) {
+    DatasetUploadStatus status = uploads.get(uploadKey(datasetId, uploadId));
+    if (status == null) throw new IllegalArgumentException("No such dataset upload");
+    return status.ingestJobId();
+  }
+
+  private static String uploadKey(String datasetId, String uploadId) {
+    return datasetId + ":" + uploadId;
+  }
 
   @Override
   public List<Exchange> listExchanges() {
@@ -78,28 +139,25 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
-  public String submitBacktest(
-      String strategyCode, String exchangeId, String instrument, String from, String to) {
-    if (strategyCode == null || strategyCode.isBlank()) {
+  public String submitBacktest(com.qtsurfer.api.sdk.BacktestRequest request) {
+    if (request.strategy() == null || request.strategy().isBlank()) {
       throw new IllegalArgumentException("strategyCode is required");
     }
-    if (exchangeId == null || exchangeId.isBlank()) {
+    if (request.exchangeId() == null || request.exchangeId().isBlank()) {
       throw new IllegalArgumentException("exchangeId is required");
-    }
-    if (instrument == null || instrument.isBlank()) {
-      throw new IllegalArgumentException("instrument is required");
     }
     String strategyId = "st-" + UUID.randomUUID().toString().substring(0, 8);
     strategies.put(strategyId, new StrategySummary()
         .strategyId(strategyId)
         .compiledAt(OffsetDateTime.now())
         .requiredSources(List.of()));
-    strategySource.put(strategyId, strategyCode);
+    strategySource.put(strategyId, request.strategy());
 
     String jobId = "bt-" + UUID.randomUUID().toString().substring(0, 8);
     jobs.put(
         jobId,
-        new JobSummary(jobId, instrument, exchangeId, JobStatus.EXECUTING, Instant.now().toString()));
+        new JobSummary(jobId, request.datasetId() == null ? request.instrument() : "dataset:" + request.datasetId(),
+            request.exchangeId(), JobStatus.EXECUTING, Instant.now().toString()));
     return jobId;
   }
 
@@ -161,11 +219,11 @@ public class BacktestingServiceStub implements BacktestingService {
     if (request.strategy().isBlank()) {
       throw new IllegalArgumentException("strategyCode is required");
     }
-    if (request.exchangeId().isBlank()) {
+    if (request.exchangeId() == null || request.exchangeId().isBlank()) {
       throw new IllegalArgumentException("exchangeId is required");
     }
-    if (request.instrument().isBlank()) {
-      throw new IllegalArgumentException("instrument is required");
+    if (request.instrument() == null && request.datasetId() == null) {
+      throw new IllegalArgumentException("instrument or datasetId is required");
     }
     String sweepId = "sw-" + UUID.randomUUID().toString().substring(0, 8);
     Map<String, List<Object>> grid = enumerate(request.params());

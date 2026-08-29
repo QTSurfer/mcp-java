@@ -8,8 +8,12 @@ import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
+import com.qtsurfer.api.sdk.BacktestRequest;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.mcp.model.DatasetSummary;
+import com.qtsurfer.mcp.model.DatasetUploadResult;
+import com.qtsurfer.mcp.model.DatasetUploadStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +35,24 @@ import java.util.Optional;
  */
 public interface BacktestingService {
 
+  /** List datasets owned by the authenticated caller. */
+  List<DatasetSummary> listDatasets();
+
+  /** Read one dataset owned by the authenticated caller. */
+  Optional<DatasetSummary> getDataset(String datasetId);
+
+  /** Delete one caller-owned dataset. */
+  void deleteDataset(String datasetId);
+
+  /** Create or version a dataset, upload a guarded file, and request asynchronous ingest. */
+  DatasetUploadResult uploadDataset(String datasetId, String name, String instrument, String filePath);
+
+  /** Read a dataset upload's ingest status. */
+  Optional<DatasetUploadStatus> getDatasetUpload(String datasetId, String uploadId);
+
+  /** Retry finalization after an upload that succeeded before the MCP call failed. */
+  String finalizeDatasetUpload(String datasetId, String uploadId);
+
   /** List available exchanges on the platform. */
   List<Exchange> listExchanges();
 
@@ -44,16 +66,18 @@ public interface BacktestingService {
   /**
    * Compile and submit a backtest job. Returns the server-assigned job ID.
    *
-   * @param strategyCode Java source of the strategy to compile
-   * @param exchangeId   exchange identifier (e.g. {@code "binance"})
-   * @param instrument   CCXT instrument (e.g. {@code "BTC/USDT"})
-   * @param from         ISO-8601 start date
-   * @param to           ISO-8601 end date
+   * @param request complete SDK request, including exactly one instrument or dataset source
    * @throws IllegalArgumentException on invalid input
    * @throws RuntimeException on backend error
    */
-  String submitBacktest(
-      String strategyCode, String exchangeId, String instrument, String from, String to);
+  String submitBacktest(BacktestRequest request);
+
+  /** Submit a normal exchange-instrument backtest for compatibility with existing callers. */
+  default String submitBacktest(
+      String strategyCode, String exchangeId, String instrument, String from, String to) {
+    return submitBacktest(BacktestRequest.builder().strategy(strategyCode).exchangeId(exchangeId)
+        .instrument(instrument).from(from).to(to).build());
+  }
 
   /**
    * Current status of a backtest job.

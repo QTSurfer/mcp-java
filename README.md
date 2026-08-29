@@ -147,6 +147,8 @@ Options:
                        Override with QTS_URL env var
   --apikey <key>       Long-lived API key
                        (default: QTSURFER_APIKEY env var)
+  --upload-root <dir>  Permit dataset upload files only beneath this directory
+                       (default: QTSURFER_UPLOAD_ROOT; disabled when absent)
   --stub               Use in-memory stub (no backend required)
   --help               Print this message and exit
 
@@ -157,19 +159,43 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 
 | Tool | Description |
 |------|-------------|
+| `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV and start ingest; never exposes a presigned URL |
+| `list_datasets` / `get_dataset` | List datasets or read one dataset's metadata and current version |
+| `get_dataset_upload` | Poll the asynchronous ingest after an upload |
+| `finalize_dataset_upload` | Retry finalization after a successful PUT whose original MCP response was lost |
+| `delete_dataset` | Delete a caller-owned dataset and its versions |
 | `list_exchanges` | List available exchanges (e.g. `binance`, `binancefutures`) |
 | `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
-| `submit_backtest` | Compile a Java strategy and submit a backtesting run; returns a job ID |
+| `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
 | `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
 | `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
 | `list_jobs` | List jobs from the current session, optionally filtered by status |
-| `submit_sweep` | Run one strategy across a parameter grid, optionally walk-forward validated; returns a sweep ID |
+| `submit_sweep` | Run one strategy across a parameter grid on an instrument or ready dataset, optionally walk-forward validated; returns a sweep ID |
 | `get_sweep_status` | Progress and a capped, plateau-ranked leaderboard for a sweep |
 | `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
 | `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
 | `list_strategies` | List every strategy registered under this account, most recently compiled first |
 | `delete_strategy` | Release a registered strategy |
 | `get_strategy_code` | Fetch the exact source last registered for a strategy id |
+
+### Datasets and local files
+
+Dataset upload is deliberately a local-stdio capability. Set `--upload-root /absolute/path` (or
+`QTSURFER_UPLOAD_ROOT`) before starting the server; otherwise `upload_dataset` is disabled. Every
+`filePath` is canonicalised, must remain under that root and must be a readable regular file, so
+traversal and symlink escapes are rejected. The tool only returns dataset/upload/ingest IDs — never
+the short-lived presigned storage URL.
+
+For Docker, mount the directory read-only and use its container path:
+
+```bash
+docker run -i --rm -e QTSURFER_APIKEY -e QTSURFER_UPLOAD_ROOT=/uploads \
+  -v "$PWD/datasets:/uploads:ro" ghcr.io/qtsurfer/mcp-java:latest
+```
+
+Once `get_dataset_upload` returns `READY`, submit a run with `datasetId`; omit `exchangeId` and
+`instrument`, because MCP derives the reserved `exchangeId=user`. `datasetVersionId` pins a prior
+ready version. `equityCurve` is accepted by both run tools and is passed through to the API.
 
 ### Sweeps
 
