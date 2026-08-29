@@ -28,6 +28,8 @@ import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.StrategyCompilation;
+import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -114,6 +116,20 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   // ---- datasets -------------------------------------------------------------
+
+  @Override
+  public StrategyCompilation compileStrategy(String strategyCode) {
+    try {
+      com.qtsurfer.api.sdk.Strategy strategy = qts.compile(strategyCode).join();
+      return new StrategyCompilation(strategy.id(), strategy.declaredProperties().stream()
+          .map(property -> new StrategyProperty(property.getName(), property.getDescription(),
+              property.getDefaultValue(), property.getReflected(), property.getMin(), property.getMax(),
+              property.getStep()))
+          .toList());
+    } catch (Exception e) {
+      throw new RuntimeException("Compilation failed: " + rootMessage(e), e);
+    }
+  }
 
   @Override
   public List<DatasetSummary> listDatasets() {

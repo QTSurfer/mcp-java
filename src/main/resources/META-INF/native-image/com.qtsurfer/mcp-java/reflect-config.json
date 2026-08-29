@@ -775,6 +775,18 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.mcp.model.StrategyCompilation",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.StrategyProperty",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.mcp.model.JobStatus",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

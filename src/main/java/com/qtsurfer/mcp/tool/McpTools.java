@@ -31,6 +31,8 @@ import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.StrategyCompilation;
+import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.service.BacktestingService;
@@ -74,6 +76,7 @@ public final class McpTools {
   public static List<SyncToolSpecification> build(BacktestingService service, String apiUrl) {
     return List.of(
         version(apiUrl),
+        compileStrategy(service),
         uploadDataset(service),
         listDatasets(service),
         getDataset(service),
@@ -97,6 +100,43 @@ public final class McpTools {
   }
 
   // ---- datasets ------------------------------------------------------------
+
+  private static SyncToolSpecification compileStrategy(BacktestingService service) {
+    Tool tool = Tool.builder().name("compile_strategy")
+        .description("Compile and register Java strategy source without starting a run. Returns the strategy id "
+            + "and the platform's best-effort declared @StrategyProperty metadata, suitable for choosing "
+            + "submit_sweep parameter names.")
+        .inputSchema(schema(Map.of("strategyCode", prop("string", "Complete Java strategy source")),
+            List.of("strategyCode"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        StrategyCompilation result = service.compileStrategy(required(request.arguments(), "strategyCode"));
+        StringBuilder output = new StringBuilder("Strategy compiled. strategyId=").append(result.strategyId());
+        if (result.declaredProperties().isEmpty()) {
+          output.append("\nNo declared properties were found.");
+        } else {
+          output.append("\nDeclared properties:");
+          result.declaredProperties().forEach(property -> output.append("\n- ").append(formatProperty(property)));
+        }
+        return text(output.toString());
+      } catch (Exception e) {
+        return error("Compilation failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static String formatProperty(StrategyProperty property) {
+    StringBuilder value = new StringBuilder(property.name());
+    if (property.defaultValue() != null) value.append(" default=").append(property.defaultValue());
+    if (property.min() != null || property.max() != null) {
+      value.append(" range=").append(valueOrUnknown(property.min())).append("..").append(valueOrUnknown(property.max()));
+    }
+    if (property.step() != null) value.append(" step=").append(property.step());
+    if (property.description() != null && !property.description().isBlank()) {
+      value.append(" — ").append(property.description());
+    }
+    return value.toString();
+  }
 
   private static SyncToolSpecification uploadDataset(BacktestingService service) {
     Tool tool = Tool.builder()

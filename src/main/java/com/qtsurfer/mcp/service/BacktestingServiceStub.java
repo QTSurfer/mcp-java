@@ -23,6 +23,7 @@ import com.qtsurfer.mcp.model.JobSummary;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.StrategyCompilation;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -61,6 +62,18 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, DatasetUploadStatus> uploads = new ConcurrentHashMap<>();
 
   // ---- datasets -------------------------------------------------------------
+
+  @Override
+  public StrategyCompilation compileStrategy(String strategyCode) {
+    if (strategyCode == null || strategyCode.isBlank()) {
+      throw new IllegalArgumentException("strategyCode is required");
+    }
+    String strategyId = "st-" + UUID.randomUUID().toString().substring(0, 8);
+    strategies.put(strategyId, new StrategySummary().strategyId(strategyId)
+        .compiledAt(OffsetDateTime.now()).requiredSources(List.of()));
+    strategySource.put(strategyId, strategyCode);
+    return new StrategyCompilation(strategyId, List.of());
+  }
 
   @Override
   public List<DatasetSummary> listDatasets() {

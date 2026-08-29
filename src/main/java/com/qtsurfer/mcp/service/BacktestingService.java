@@ -14,6 +14,7 @@ import com.qtsurfer.mcp.model.JobSummary;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.StrategyCompilation;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +35,9 @@ import java.util.Optional;
  * sensitivity calls answer for this session's sweeps and nothing else.
  */
 public interface BacktestingService {
+
+  /** Compile source and return the registered strategy plus its declared tuning properties. */
+  StrategyCompilation compileStrategy(String strategyCode);
 
   /** List datasets owned by the authenticated caller. */
   List<DatasetSummary> listDatasets();
