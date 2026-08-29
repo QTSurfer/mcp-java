@@ -172,6 +172,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_jobs` | List jobs from the current session, optionally filtered by status |
 | `submit_sweep` | Run one strategy across a parameter grid on an instrument or ready dataset, optionally walk-forward validated; returns a sweep ID |
 | `get_sweep_status` | Progress and a capped, plateau-ranked leaderboard for a sweep |
+| `get_sweep_run_equity_curve` | Bounded normalized equity curve for one retained sweep trial |
 | `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
 | `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
 | `list_strategies` | List every strategy registered under this account, most recently compiled first |
@@ -213,8 +214,10 @@ is not the same thing as a loop of backtests. What the loop cannot produce:
   nothing and the top rows will not show it.
 
 `submit_sweep` blocks until the platform accepts the sweep: it compiles the strategy and prepares
-the dataset first, which takes as long as it takes on a long window. The three read/cancel tools
-work on sweeps submitted in the current session.
+the dataset first, which takes as long as it takes on a long window. The read/cancel tools work on
+sweeps submitted in the current session. If the sweep was requested with retained curves,
+`get_sweep_run_equity_curve` reads one `runIx` with a 1,000-point default (10,000 absolute MCP
+maximum); it asks the platform for compact differential data but returns normalized absolute points.
 
 ### Example session
 

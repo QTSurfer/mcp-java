@@ -38,8 +38,8 @@ class McpServerIT {
   }
 
   @Test
-  void registersExactlyTwentyTwoTools() {
-    assertThat(runner.getServer().listTools()).hasSize(22);
+  void registersExactlyTwentyThreeTools() {
+    assertThat(runner.getServer().listTools()).hasSize(23);
   }
 
   @Test
@@ -49,7 +49,7 @@ class McpServerIT {
         "version", "compile_strategy", "upload_dataset", "list_datasets", "get_dataset", "get_dataset_upload",
         "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
-        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity",
+        "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "delete_strategy", "get_strategy_code");
   }
 

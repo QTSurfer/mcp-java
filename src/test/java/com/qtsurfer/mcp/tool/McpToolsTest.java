@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyTwentyTwoTools() {
-    assertThat(tools).hasSize(22);
+  void registersExactlyTwentyThreeTools() {
+    assertThat(tools).hasSize(23);
   }
 
   @Test
@@ -65,7 +65,7 @@ class McpToolsTest {
         "version", "compile_strategy", "upload_dataset", "list_datasets", "get_dataset", "get_dataset_upload",
         "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
-        "submit_sweep", "get_sweep_status", "cancel_sweep", "get_sweep_sensitivity",
+        "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "delete_strategy", "get_strategy_code");
   }
 
@@ -321,6 +321,33 @@ class McpToolsTest {
   }
 
   @Test
+  void getSweepRunEquityCurveReturnsSdkBoundedJson() {
+    String sweep = callText(tools, "submit_sweep", sweepArguments());
+    String sweepId = sweepIdFrom(sweep);
+    String json = callText(tools, "get_sweep_run_equity_curve", Map.of(
+        "sweepId", sweepId, "runIx", 1, "maxResample", 1_000));
+    assertThat(json)
+        .contains("\"sweepId\":\"" + sweepId + "\"")
+        .contains("\"runIx\":1")
+        .contains("\"points\":3")
+        .contains("\"inputPointCount\":12")
+        .contains("\"resampled\":true")
+        .contains("\"t\":[")
+        .contains("\"equity\":[");
+  }
+
+  @Test
+  void getSweepRunEquityCurveRejectsUnknownSweepAndUnsafeLimit() {
+    assertThat(callText(tools, "get_sweep_run_equity_curve", Map.of("sweepId", "sw-missing", "runIx", 0)))
+        .contains("was not submitted in this session");
+    String sweepId = sweepIdFrom(callText(tools, "submit_sweep", sweepArguments()));
+    var result = call("get_sweep_run_equity_curve", Map.of(
+        "sweepId", sweepId, "runIx", 0, "maxResample", 10_001));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("maxResample must be between 1 and 10000");
+  }
+
+  @Test
   void getJobStatusOmitsCurveByDefaultAndIncludesItWhenRequested() {
     var tools = toolsWithCurve();
     assertThat(callText(tools, "get_job_status", Map.of("jobId", "bt-curve")))
@@ -336,6 +363,19 @@ class McpToolsTest {
   private String strategyIdFrom(String submitBacktestResultText) {
     int at = submitBacktestResultText.indexOf("st-");
     return submitBacktestResultText.substring(at, at + 11);
+  }
+
+  private Map<String, Object> sweepArguments() {
+    return Map.of(
+        "strategyCode", "// c", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-01-31",
+        "params", Map.of("period", Map.of("values", List.of(7, 14))));
+  }
+
+  private String sweepIdFrom(String submitSweepResultText) {
+    int start = submitSweepResultText.indexOf("sw-");
+    int end = submitSweepResultText.indexOf('\n', start);
+    return submitSweepResultText.substring(start, end);
   }
 
   @Test

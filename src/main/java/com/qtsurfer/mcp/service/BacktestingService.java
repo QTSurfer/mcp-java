@@ -9,6 +9,7 @@ import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.BacktestRequest;
+import com.qtsurfer.api.sdk.BoundedEquityCurve;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
 import com.qtsurfer.mcp.model.DatasetSummary;
@@ -141,6 +142,21 @@ public interface BacktestingService {
    * @return empty when the sweep is unknown to this session
    */
   Optional<ExecuteSweepResult> getSweepStatus(String sweepId);
+
+  /**
+   * Read one retained sweep-run curve through the SDK's normalized, bounded façade.
+   *
+   * <p>Session-scoped: the sweep handle preserves the request and exchange provenance required
+   * by the API. The returned curve never exposes generated API response models.
+   *
+   * @param sweepId sweep identifier
+   * @param runIx trial index in the sweep
+   * @param maxResample optional requested point ceiling; {@code null} uses the SDK default
+   * @return the normalized bounded curve, or empty when the sweep is unknown to this session
+   * @throws IllegalArgumentException if {@code maxResample} is outside the SDK safety bound
+   */
+  Optional<BoundedEquityCurve> getSweepRunEquityCurve(
+      String sweepId, int runIx, Integer maxResample);
 
   /**
    * Ask the platform to stop a sweep submitted in this session between parameter vectors.

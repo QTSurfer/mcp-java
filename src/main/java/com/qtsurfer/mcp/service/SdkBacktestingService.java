@@ -19,6 +19,7 @@ import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
 import com.qtsurfer.api.sdk.BacktestOutcome;
 import com.qtsurfer.api.sdk.BacktestRequest;
+import com.qtsurfer.api.sdk.BoundedEquityCurve;
 import com.qtsurfer.api.sdk.Sweep;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepOptions;
@@ -79,7 +80,7 @@ public class SdkBacktestingService implements BacktestingService {
   private final String baseUrl;
   private final UploadRoot uploadRoot;
   private final Map<String, SessionJob> jobs = new ConcurrentHashMap<>();
-  private final Map<String, Sweep> sweeps = new ConcurrentHashMap<>();
+  private final Map<String, SessionSweep> sweeps = new ConcurrentHashMap<>();
 
   /** Internal record tracking a submitted job. */
   private record SessionJob(
@@ -103,6 +104,9 @@ public class SdkBacktestingService implements BacktestingService {
       };
     }
   }
+
+  /** Session provenance required to address a retained curve through the SDK. */
+  private record SessionSweep(Sweep sweep, String exchangeId) {}
 
   public SdkBacktestingService(AuthenticatedClient qts, String baseUrl) {
     this(qts, baseUrl, null);
@@ -401,7 +405,7 @@ public class SdkBacktestingService implements BacktestingService {
     } catch (Exception e) {
       throw new RuntimeException("Sweep submission failed: " + rootMessage(e), e);
     }
-    sweeps.put(sweep.id(), sweep);
+    sweeps.put(sweep.id(), new SessionSweep(sweep, request.exchangeId()));
     log.info("Submitted sweep {} ({} {} {} → {})", sweep.id(),
         request.exchangeId(), request.instrument(), request.from(), request.to());
     return sweep.accepted();
@@ -409,21 +413,32 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public Optional<ExecuteSweepResult> getSweepStatus(String sweepId) {
-    Sweep sweep = sweeps.get(sweepId);
+    SessionSweep sessionSweep = sweeps.get(sweepId);
     // null/null asks for the platform's own default view: ranked, plateau-ordered.
-    return sweep == null ? Optional.empty() : Optional.of(sweep.results(null, null));
+    return sessionSweep == null ? Optional.empty() : Optional.of(sessionSweep.sweep().results(null, null));
+  }
+
+  @Override
+  public Optional<BoundedEquityCurve> getSweepRunEquityCurve(
+      String sweepId, int runIx, Integer maxResample) {
+    SessionSweep sessionSweep = sweeps.get(sweepId);
+    if (sessionSweep == null) return Optional.empty();
+    Sweep sweep = sessionSweep.sweep();
+    return Optional.of(qts.getBoundedSweepRunEquityCurve(
+        sessionSweep.exchangeId(), sweep.requestId(), sweepId, runIx, maxResample));
   }
 
   @Override
   public boolean cancelSweep(String sweepId) {
-    Sweep sweep = sweeps.get(sweepId);
-    return sweep != null && sweep.cancel();
+    SessionSweep sessionSweep = sweeps.get(sweepId);
+    return sessionSweep != null && sessionSweep.sweep().cancel();
   }
 
   @Override
   public Optional<SweepSensitivity> getSweepSensitivity(String sweepId, SweepObjective objective) {
-    Sweep sweep = sweeps.get(sweepId);
-    return sweep == null ? Optional.empty() : Optional.of(sweep.sensitivity(objective));
+    SessionSweep sessionSweep = sweeps.get(sweepId);
+    return sessionSweep == null ? Optional.empty()
+        : Optional.of(sessionSweep.sweep().sensitivity(objective));
   }
 
   // ---- strategies ------------------------------------------------------------

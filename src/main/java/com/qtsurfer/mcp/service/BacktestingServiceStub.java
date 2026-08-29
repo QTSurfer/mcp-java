@@ -15,6 +15,8 @@ import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardFold;
 import com.qtsurfer.api.client.model.WalkForwardResult;
 import com.qtsurfer.api.sdk.ParamAxis;
+import com.qtsurfer.api.sdk.BoundedEquityCurve;
+import com.qtsurfer.api.sdk.EquityCurvePoint;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
@@ -265,6 +267,19 @@ public class BacktestingServiceStub implements BacktestingService {
   @Override
   public Optional<ExecuteSweepResult> getSweepStatus(String sweepId) {
     return Optional.ofNullable(sweeps.get(sweepId));
+  }
+
+  @Override
+  public Optional<BoundedEquityCurve> getSweepRunEquityCurve(
+      String sweepId, int runIx, Integer maxResample) {
+    if (!sweeps.containsKey(sweepId)) return Optional.empty();
+    int limit = maxResample == null ? BoundedEquityCurve.DEFAULT_MAX_RESAMPLE : maxResample;
+    BoundedEquityCurve.validateMaxResample(limit);
+    long start = 1_700_000_000_000L + runIx * 1_000L;
+    return Optional.of(new BoundedEquityCurve(List.of(
+        new EquityCurvePoint(start, 100.0),
+        new EquityCurvePoint(start + 60_000L, 101.5),
+        new EquityCurvePoint(start + 120_000L, 99.75)), 12, true));
   }
 
   @Override

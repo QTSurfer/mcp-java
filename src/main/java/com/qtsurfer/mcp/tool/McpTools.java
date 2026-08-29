@@ -23,6 +23,8 @@ import com.qtsurfer.api.client.model.EquityCurveRequest;
 import com.qtsurfer.api.client.model.EquityCurveOutMode;
 import com.qtsurfer.api.sdk.ParamAxis;
 import com.qtsurfer.api.sdk.BacktestRequest;
+import com.qtsurfer.api.sdk.BoundedEquityCurve;
+import com.qtsurfer.api.sdk.EquityCurvePoint;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.SweepSampler;
@@ -92,6 +94,7 @@ public final class McpTools {
         listJobs(service),
         submitSweep(service),
         getSweepStatus(service),
+        getSweepRunEquityCurve(service),
         cancelSweep(service),
         getSweepSensitivity(service),
         listStrategies(service),
@@ -783,6 +786,45 @@ public final class McpTools {
         + "another client cannot be polled, cancelled or analysed here.";
   }
 
+  // ---- get_sweep_run_equity_curve -----------------------------------------
+
+  private static SyncToolSpecification getSweepRunEquityCurve(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("get_sweep_run_equity_curve")
+        .description("Return one retained sweep trial's equity curve as compact JSON. The server "
+            + "always receives its compact differential format request; MCP returns normalized "
+            + "absolute epoch-millis timestamps and equity values. maxResample defaults to "
+            + BoundedEquityCurve.DEFAULT_MAX_RESAMPLE + " and cannot exceed "
+            + BoundedEquityCurve.MAX_MAX_RESAMPLE + ". The platform may enforce a lower limit "
+            + "for the authenticated plan. Only sweeps submitted in this MCP session are "
+            + "readable because their request and exchange provenance stay in the session handle.")
+        .inputSchema(schema(
+            Map.of(
+                "sweepId", prop("string", "Sweep ID returned by submit_sweep"),
+                "runIx", prop("integer", "Trial index from get_sweep_status"),
+                "maxResample", prop("integer", "Maximum points to request (default "
+                    + BoundedEquityCurve.DEFAULT_MAX_RESAMPLE + ", max "
+                    + BoundedEquityCurve.MAX_MAX_RESAMPLE + ")")),
+            List.of("sweepId", "runIx")))
+        .build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      Map<String, Object> args = request.arguments();
+      String sweepId = required(args, "sweepId");
+      int runIx = asInt(args.get("runIx"), -1);
+      if (runIx < 0) return error("runIx must be zero or greater");
+      Integer maxResample = asInteger(args.get("maxResample"));
+      try {
+        return service.getSweepRunEquityCurve(sweepId, runIx, maxResample)
+            .map(curve -> text(sweepEquityCurveJson(sweepId, runIx, curve)))
+            .orElseGet(() -> text(sweepNotFound(sweepId)));
+      } catch (IllegalArgumentException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Failed to read sweep curve for " + sweepId + ": " + e.getMessage());
+      }
+    });
+  }
+
   private static String formatSweepStatus(String sweepId, ExecuteSweepResult r, int topN) {
     StringBuilder sb = new StringBuilder();
     sb.append("Sweep ").append(sweepId).append(": ")
@@ -1324,6 +1366,27 @@ public final class McpTools {
         + ",\"downsampled\":" + (sampled.size() < curve.size())
         + ",\"t\":[" + t + "]"
         + ",\"equity\":[" + eq + "]}";
+  }
+
+  /** Render an SDK-bounded sweep curve without applying a second transform in MCP. */
+  private static String sweepEquityCurveJson(String sweepId, int runIx, BoundedEquityCurve curve) {
+    StringBuilder timestamps = new StringBuilder();
+    StringBuilder equities = new StringBuilder();
+    for (int index = 0; index < curve.points().size(); index++) {
+      if (index > 0) {
+        timestamps.append(',');
+        equities.append(',');
+      }
+      EquityCurvePoint point = curve.points().get(index);
+      timestamps.append(point.timestamp());
+      equities.append(point.equity());
+    }
+    return "{\"sweepId\":\"" + sweepId + "\",\"runIx\":" + runIx
+        + ",\"unit\":\"epoch_ms\",\"points\":" + curve.points().size()
+        + ",\"inputPointCount\":" + curve.inputPointCount()
+        + ",\"resampled\":" + curve.resampled()
+        + ",\"t\":[" + timestamps + "]"
+        + ",\"equity\":[" + equities + "]}";
   }
 
   /**

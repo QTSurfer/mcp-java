@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added ✨
+
+- **`get_sweep_run_equity_curve`** reads one retained sweep trial through `sdk-java`'s bounded
+  façade. It accepts only `sweepId`, `runIx` and optional `maxResample` (default 1,000, hard
+  maximum 10,000), always asks the API for compact differential data and returns normalized
+  absolute points. The MCP layer never exposes generated curve models or format switches, and
+  only reads sweeps submitted in its own session because it retains their request/exchange
+  provenance.
+
+### Changed 🔄
+
+- Bump `sdk-java` to `0.19.0` for bounded sweep-run curve delivery.
+
 ## [0.10.5] — 2026-08-25
 
 ### Changed 🔄
