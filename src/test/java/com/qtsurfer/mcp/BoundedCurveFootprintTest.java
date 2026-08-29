@@ -39,10 +39,12 @@ class BoundedCurveFootprintTest {
     int compactJsonBytes = compactJson(generated).getBytes(StandardCharsets.UTF_8).length;
     long generatedBytes = GraphLayout.parseInstance(generated).totalSize();
     long normalizedBytes = GraphLayout.parseInstance(normalized).totalSize();
+    long decodePeakBytes = GraphLayout.parseInstance(generated, normalized).totalSize();
 
     System.out.printf(Locale.ROOT,
-        "curve-footprint points=%d compactJsonBytes=%d generatedRetainedBytes=%d normalizedRetainedBytes=%d%n",
-        pointCount, compactJsonBytes, generatedBytes, normalizedBytes);
+        "curve-footprint points=%d compactJsonBytes=%d generatedRetainedBytes=%d "
+            + "normalizedRetainedBytes=%d decodePeakRetainedBytes=%d%n",
+        pointCount, compactJsonBytes, generatedBytes, normalizedBytes, decodePeakBytes);
 
     assertThat(normalized.points()).hasSize(pointCount);
     assertThat(generated.getTimestamps()).hasSize(pointCount);
