@@ -116,24 +116,18 @@ class ReflectConfigTest {
       MODEL + "DeleteStrategy200Response",
       MODEL + "DeleteStrategy200Response$DeletedEnum",
       MODEL + "GetStrategyCode200Response",
-      MODEL + "HalLink",
       MODEL + "InstrumentLinks",
       MODEL + "InstrumentListMeta",
       MODEL + "InstrumentListMeta$SegmentEnum",
       MODEL + "InstrumentListResponse",
       MODEL + "ListStrategies200Response",
-      MODEL + "Notice",
-      MODEL + "Notice$ProvenanceEnum",
       MODEL + "PrepareJobState",
       MODEL + "PrepareJobState$StatusEnum",
       MODEL + "PrepareJobStateAllOfHoursWithoutData",
       MODEL + "PrepareJobStateAllOfHoursWithoutData$RationaleEnum",
       MODEL + "ResponseError",
       MODEL + "ResultMap",
-      MODEL + "ResultMap$SignalsUploadEnum",
-      MODEL + "StrategyState",
-      MODEL + "StrategyState$RequiredSourcesEnum",
-      MODEL + "StrategyState$ValidationEnum");
+      MODEL + "ResultMap$SignalsUploadEnum");
 
   // ---- the gate -------------------------------------------------------------
 

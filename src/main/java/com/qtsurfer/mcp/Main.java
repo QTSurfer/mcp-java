@@ -31,6 +31,7 @@ import javax.net.ssl.X509TrustManager;
  *                           or QTS_URL env var)
  *     --apikey &lt;key&gt;       Long-lived API key (default: QTSURFER_APIKEY env var)
  *     --upload-root &lt;dir&gt;  Permit dataset upload files only beneath this directory
+ *     --download-root &lt;dir&gt; Permit market-data output only beneath this directory
  *     --stub                Use the in-memory stub instead of the real SDK
  *                           (useful for local testing without a QTSurfer account)
  * </pre>
@@ -85,6 +86,7 @@ public class Main {
     String url    = getArg(args, "--url",    env("QTS_URL", DEFAULT_URL));
     String apikey = getArg(args, "--apikey", env("QTSURFER_APIKEY", null));
     String uploadRoot = getArg(args, "--upload-root", env("QTSURFER_UPLOAD_ROOT", null));
+    String downloadRoot = getArg(args, "--download-root", env("QTSURFER_DOWNLOAD_ROOT", null));
     boolean stub  = hasFlag(args, "--stub");
 
     McpServerRunner runner;
@@ -113,7 +115,8 @@ public class Main {
       }
       try {
         runner = new McpServerRunner(
-            new SdkBacktestingService(qts, url, uploadRoot == null ? null : Path.of(uploadRoot)), url);
+            new SdkBacktestingService(qts, url, uploadRoot == null ? null : Path.of(uploadRoot),
+                downloadRoot == null ? null : Path.of(downloadRoot)), url);
       } catch (IllegalArgumentException e) {
         System.err.println("error: invalid upload root: " + e.getMessage());
         return 4;
@@ -227,6 +230,8 @@ public class Main {
     System.out.println("                       (default: QTSURFER_APIKEY env var)");
     System.out.println("  --upload-root <dir>  Permit dataset upload files only beneath this directory");
     System.out.println("                       (default: QTSURFER_UPLOAD_ROOT; disabled when absent)");
+    System.out.println("  --download-root <dir> Permit market-data output only beneath this directory");
+    System.out.println("                       (default: QTSURFER_DOWNLOAD_ROOT; disabled when absent)");
     System.out.println("  --stub               Use in-memory stub (no backend required)");
     System.out.println("  --help               Print this message and exit");
     System.out.println();

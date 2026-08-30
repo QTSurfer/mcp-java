@@ -14,16 +14,19 @@ import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.api.client.model.JobState;
 import com.qtsurfer.api.client.model.ResultMap;
 import com.qtsurfer.api.client.model.StrategySummary;
+import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
 import com.qtsurfer.api.sdk.BacktestOutcome;
 import com.qtsurfer.api.sdk.BacktestRequest;
 import com.qtsurfer.api.sdk.BoundedEquityCurve;
+import com.qtsurfer.api.sdk.DownloadFormat;
 import com.qtsurfer.api.sdk.Sweep;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepOptions;
 import com.qtsurfer.api.sdk.SweepRequest;
+import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
@@ -34,12 +37,15 @@ import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.mcp.model.MarketDataDownload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,6 +85,7 @@ public class SdkBacktestingService implements BacktestingService {
   private final AuthenticatedClient qts;
   private final String baseUrl;
   private final UploadRoot uploadRoot;
+  private final UploadRoot downloadRoot;
   private final Map<String, SessionJob> jobs = new ConcurrentHashMap<>();
   private final Map<String, SessionSweep> sweeps = new ConcurrentHashMap<>();
 
@@ -109,14 +116,21 @@ public class SdkBacktestingService implements BacktestingService {
   private record SessionSweep(Sweep sweep, String exchangeId) {}
 
   public SdkBacktestingService(AuthenticatedClient qts, String baseUrl) {
-    this(qts, baseUrl, null);
+    this(qts, baseUrl, null, null);
   }
 
   /** Create the SDK-backed service with an optional operator-approved upload directory. */
   public SdkBacktestingService(AuthenticatedClient qts, String baseUrl, Path uploadRoot) {
+    this(qts, baseUrl, uploadRoot, null);
+  }
+
+  /** Create the SDK-backed service with independently guarded upload and download directories. */
+  public SdkBacktestingService(
+      AuthenticatedClient qts, String baseUrl, Path uploadRoot, Path downloadRoot) {
     this.qts = qts;
     this.baseUrl = baseUrl;
     this.uploadRoot = uploadRoot == null ? null : new UploadRoot(uploadRoot);
+    this.downloadRoot = downloadRoot == null ? null : new UploadRoot(downloadRoot);
   }
 
   // ---- datasets -------------------------------------------------------------
@@ -137,13 +151,13 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public List<DatasetSummary> listDatasets() {
-    return qts.listDatasets().stream().map(SdkBacktestingService::datasetSummary).toList();
+    return qts.getDatasets().stream().map(SdkBacktestingService::datasetSummary).toList();
   }
 
   @Override
   public Optional<DatasetSummary> getDataset(String datasetId) {
     try {
-      return Optional.of(datasetSummary(qts.dataset(datasetId)));
+      return Optional.of(datasetSummary(qts.getDataset(datasetId)));
     } catch (RuntimeException e) {
       return Optional.empty();
     }
@@ -185,7 +199,7 @@ public class SdkBacktestingService implements BacktestingService {
   @Override
   public Optional<DatasetUploadStatus> getDatasetUpload(String datasetId, String uploadId) {
     try {
-      DatasetUploadState state = qts.datasetUpload(datasetId, uploadId);
+      DatasetUploadState state = qts.getDatasetUpload(datasetId, uploadId);
       return Optional.of(uploadStatus(datasetId, state));
     } catch (RuntimeException e) {
       return Optional.empty();
@@ -231,12 +245,73 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public List<Exchange> listExchanges() {
-    return qts.exchanges();
+    return qts.getExchanges();
   }
 
   @Override
-  public List<InstrumentDetail> listInstruments(String exchangeId) {
-    return qts.instruments(exchangeId);
+  public List<InstrumentDetail> listInstruments(String exchangeId, String segment) {
+    return segment == null || segment.isBlank()
+        ? qts.getInstruments(exchangeId) : qts.getInstruments(exchangeId, segment);
+  }
+
+  @Override
+  public MarketDataDownload downloadTickers(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite) {
+    return downloadMarketData(exchangeId, base, quote, hour, format, outputPath, overwrite, true);
+  }
+
+  @Override
+  public MarketDataDownload downloadKlines(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite) {
+    return downloadMarketData(exchangeId, base, quote, hour, format, outputPath, overwrite, false);
+  }
+
+  private MarketDataDownload downloadMarketData(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite, boolean tickers) {
+    if (downloadRoot == null) {
+      throw new IllegalStateException(
+          "Market-data download is disabled: configure --download-root or QTSURFER_DOWNLOAD_ROOT");
+    }
+    DownloadFormat downloadFormat = parseDownloadFormat(format);
+    Path output = downloadRoot.resolveOutputFile(outputPath, overwrite);
+    Path temporary;
+    try {
+      temporary = Files.createTempFile(output.getParent(), ".qtsurfer-download-", ".part");
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not create guarded download output", e);
+    }
+    try (InputStream input = tickers
+        ? qts.downloadTickers(exchangeId, base, quote, hour, downloadFormat)
+        : qts.downloadKlines(exchangeId, base, quote, hour, downloadFormat)) {
+      long bytes = Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING);
+      if (overwrite) {
+        Files.move(temporary, output, StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.ATOMIC_MOVE);
+      } else {
+        Files.move(temporary, output, StandardCopyOption.ATOMIC_MOVE);
+      }
+      return new MarketDataDownload(Path.of(outputPath).normalize().toString(), bytes,
+          downloadFormat.wire().wireValue());
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not stream market-data download to guarded output", e);
+    } finally {
+      try {
+        Files.deleteIfExists(temporary);
+      } catch (IOException ignored) {
+        log.warn("Could not remove partial market-data download {}", temporary);
+      }
+    }
+  }
+
+  private static DownloadFormat parseDownloadFormat(String format) {
+    if (format == null || format.isBlank() || "lastra".equalsIgnoreCase(format)) {
+      return DownloadFormat.LASTRA;
+    }
+    if ("parquet".equalsIgnoreCase(format)) return DownloadFormat.PARQUET;
+    throw new IllegalArgumentException("format must be lastra or parquet");
   }
 
   @Override
@@ -253,7 +328,7 @@ public class SdkBacktestingService implements BacktestingService {
     // Submit execution (non-blocking — returns Backtest handle with job ID)
     Backtest backtest;
     try {
-      backtest = strategy.backtest(sdkRequest, BacktestOptions.defaults()).join();
+      backtest = strategy.executeBacktest(sdkRequest, BacktestOptions.defaults()).join();
     } catch (Exception e) {
       throw new RuntimeException("Backtest submission failed: " + rootMessage(e), e);
     }
@@ -314,7 +389,7 @@ public class SdkBacktestingService implements BacktestingService {
   private Optional<JobSummary> fromPlatform(String jobId, String exchangeId) {
     BacktestOutcome outcome;
     try {
-      outcome = qts.backtestResult(exchangeId, jobId);
+      outcome = qts.getBacktestResult(exchangeId, jobId);
     } catch (Exception e) {
       throw new RuntimeException(
           "The platform did not return job " + jobId + " on exchange " + exchangeId
@@ -408,14 +483,14 @@ public class SdkBacktestingService implements BacktestingService {
     sweeps.put(sweep.id(), new SessionSweep(sweep, request.exchangeId()));
     log.info("Submitted sweep {} ({} {} {} → {})", sweep.id(),
         request.exchangeId(), request.instrument(), request.from(), request.to());
-    return sweep.accepted();
+    return sweep.getAccepted();
   }
 
   @Override
   public Optional<ExecuteSweepResult> getSweepStatus(String sweepId) {
     SessionSweep sessionSweep = sweeps.get(sweepId);
     // null/null asks for the platform's own default view: ranked, plateau-ordered.
-    return sessionSweep == null ? Optional.empty() : Optional.of(sessionSweep.sweep().results(null, null));
+    return sessionSweep == null ? Optional.empty() : Optional.of(sessionSweep.sweep().getResults(null, null));
   }
 
   @Override
@@ -438,14 +513,28 @@ public class SdkBacktestingService implements BacktestingService {
   public Optional<SweepSensitivity> getSweepSensitivity(String sweepId, SweepObjective objective) {
     SessionSweep sessionSweep = sweeps.get(sweepId);
     return sessionSweep == null ? Optional.empty()
-        : Optional.of(sessionSweep.sweep().sensitivity(objective));
+        : Optional.of(sessionSweep.sweep().getSensitivity(objective));
   }
 
   // ---- strategies ------------------------------------------------------------
 
   @Override
+  public ValidationOutcome validateStrategy(String strategyId) {
+    return qts.validateStrategy(strategyId);
+  }
+
+  @Override
+  public Optional<StrategyState> getStrategy(String strategyId) {
+    try {
+      return Optional.of(qts.getStrategyState(strategyId));
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
   public List<StrategySummary> listStrategies() {
-    return qts.listStrategies();
+    return qts.getStrategies();
   }
 
   @Override

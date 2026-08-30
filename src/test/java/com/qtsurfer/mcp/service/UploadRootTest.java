@@ -44,4 +44,26 @@ class UploadRootTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("beneath");
   }
+
+  @Test
+  void resolvesNewRelativeOutputBeneathExistingRootDirectory() throws IOException {
+    Path root = Files.createDirectory(tempDir.resolve("uploads"));
+    Path exports = Files.createDirectory(root.resolve("exports"));
+
+    assertThat(new UploadRoot(root).resolveOutputFile("exports/ticks.lastra", false))
+        .isEqualTo(exports.toRealPath().resolve("ticks.lastra"));
+  }
+
+  @Test
+  void rejectsOutputTraversalAndExistingFileWithoutOverwrite() throws IOException {
+    Path root = Files.createDirectory(tempDir.resolve("uploads"));
+    Path existing = Files.writeString(root.resolve("ticks.lastra"), "old");
+    UploadRoot guard = new UploadRoot(root);
+
+    assertThatThrownBy(() -> guard.resolveOutputFile("../secret.lastra", false))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("relative");
+    assertThatThrownBy(() -> guard.resolveOutputFile("ticks.lastra", false))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already exists");
+    assertThat(guard.resolveOutputFile("ticks.lastra", true)).isEqualTo(existing.toRealPath());
+  }
 }

@@ -571,6 +571,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.StrategyLinks",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.StrategyState$RequiredSourcesEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -764,6 +770,12 @@
   },
   {
     "name": "com.qtsurfer.mcp.model.DatasetUploadStatus",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.MarketDataDownload",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true

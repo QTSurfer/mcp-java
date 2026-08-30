@@ -5,8 +5,10 @@ import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.api.client.model.StrategySummary;
+import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
+import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.BacktestRequest;
 import com.qtsurfer.api.sdk.BoundedEquityCurve;
@@ -16,6 +18,7 @@ import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
+import com.qtsurfer.mcp.model.MarketDataDownload;
 
 import java.util.List;
 import java.util.Optional;
@@ -66,7 +69,22 @@ public interface BacktestingService {
    *
    * @param exchangeId exchange identifier (e.g. {@code "binance"})
    */
-  List<InstrumentDetail> listInstruments(String exchangeId);
+  default List<InstrumentDetail> listInstruments(String exchangeId) {
+    return listInstruments(exchangeId, null);
+  }
+
+  /** List instruments, optionally restricted to one platform market segment. */
+  List<InstrumentDetail> listInstruments(String exchangeId, String segment);
+
+  /** Stream one hourly ticker segment to a guarded local output file. */
+  MarketDataDownload downloadTickers(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite);
+
+  /** Stream one hourly kline segment to a guarded local output file. */
+  MarketDataDownload downloadKlines(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite);
 
   /**
    * Compile and submit a backtest job. Returns the server-assigned job ID.
@@ -179,6 +197,12 @@ public interface BacktestingService {
   Optional<SweepSensitivity> getSweepSensitivity(String sweepId, SweepObjective objective);
 
   // ---- strategies ------------------------------------------------------------
+
+  /** Request validation of a registered strategy or return its already-known state. */
+  ValidationOutcome validateStrategy(String strategyId);
+
+  /** Read the current detailed state of a registered strategy. */
+  Optional<StrategyState> getStrategy(String strategyId);
 
   /**
    * List every strategy registered under the account behind this session's API key, most

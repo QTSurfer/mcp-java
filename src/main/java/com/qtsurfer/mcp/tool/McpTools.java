@@ -29,6 +29,7 @@ import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.SweepSampler;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
+import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
@@ -37,6 +38,7 @@ import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
+import com.qtsurfer.mcp.model.MarketDataDownload;
 import com.qtsurfer.mcp.service.BacktestingService;
 
 import java.time.OffsetDateTime;
@@ -87,6 +89,8 @@ public final class McpTools {
         deleteDataset(service),
         listExchanges(service),
         listInstruments(service),
+        downloadTickers(service),
+        downloadKlines(service),
         submitBacktest(service),
         getJobStatus(service),
         cancelBacktest(service),
@@ -98,6 +102,8 @@ public final class McpTools {
         cancelSweep(service),
         getSweepSensitivity(service),
         listStrategies(service),
+        validateStrategy(service),
+        getStrategy(service),
         deleteStrategy(service),
         getStrategyCode(service));
   }
@@ -332,14 +338,16 @@ public final class McpTools {
             + "Use the returned instrument ids with submit_backtest.")
         .inputSchema(schema(
             Map.of("exchangeId", prop("string",
-                "Exchange identifier, e.g. 'binance' (spot) or 'binancefutures' (perps)")),
+                "Exchange identifier, e.g. 'binance' (spot) or 'binancefutures' (perps)"),
+                "segment", prop("string", "Optional market segment: spot or futures")),
             List.of("exchangeId")))
         .build();
     return new SyncToolSpecification(tool,
         (exchange, request) -> {
           try {
             String exchangeId = required(request.arguments(), "exchangeId");
-            List<InstrumentDetail> instruments = service.listInstruments(exchangeId);
+            String segment = optional(request.arguments(), "segment");
+            List<InstrumentDetail> instruments = service.listInstruments(exchangeId, segment);
             if (instruments.isEmpty()) return text("No instruments found for exchange: " + exchangeId);
             StringBuilder sb = new StringBuilder(
                 "Instruments on " + exchangeId + " (" + instruments.size() + " total):\n");
@@ -380,6 +388,53 @@ public final class McpTools {
     }
     if (from == null || to == null) return;
     sb.append(" data: ").append(from.toLocalDate()).append(" → ").append(to.toLocalDate());
+  }
+
+  // ---- market-data downloads ---------------------------------------------
+
+  private static SyncToolSpecification downloadTickers(BacktestingService service) {
+    return downloadMarketData(service, "download_tickers", "raw ticker events", true);
+  }
+
+  private static SyncToolSpecification downloadKlines(BacktestingService service) {
+    return downloadMarketData(service, "download_klines", "aggregated exchange-native klines", false);
+  }
+
+  private static SyncToolSpecification downloadMarketData(
+      BacktestingService service, String name, String kind, boolean tickers) {
+    Tool tool = Tool.builder().name(name)
+        .description("Stream exactly one UTC hour of " + kind + " to a local file beneath the "
+            + "server operator's configured download root. hour is YYYY-MM-DDTHH; format defaults "
+            + "to lastra and may be parquet. outputPath is relative to that root; its parent must "
+            + "already exist. Existing files are rejected unless overwrite=true. The response "
+            + "contains only the relative path and byte count, never binary data.")
+        .inputSchema(schema(Map.of(
+            "exchangeId", prop("string", "Exchange id, e.g. binance"),
+            "base", prop("string", "Base asset symbol, e.g. BTC"),
+            "quote", prop("string", "Quote asset symbol, e.g. USDT"),
+            "hour", prop("string", "UTC hour in YYYY-MM-DDTHH form, e.g. 2026-01-15T10"),
+            "format", prop("string", "Optional output format: lastra (default) or parquet"),
+            "outputPath", prop("string", "Relative output file beneath the configured download root"),
+            "overwrite", prop("boolean", "Replace an existing regular file atomically; default false")),
+            List.of("exchangeId", "base", "quote", "hour", "outputPath"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        MarketDataDownload result = tickers
+            ? service.downloadTickers(required(args, "exchangeId"), required(args, "base"),
+                required(args, "quote"), required(args, "hour"), optional(args, "format"),
+                required(args, "outputPath"), optionalBoolean(args, "overwrite", false))
+            : service.downloadKlines(required(args, "exchangeId"), required(args, "base"),
+                required(args, "quote"), required(args, "hour"), optional(args, "format"),
+                required(args, "outputPath"), optionalBoolean(args, "overwrite", false));
+        return text("Downloaded " + result.format() + " segment. outputPath=" + result.outputPath()
+            + " bytes=" + result.bytes());
+      } catch (IllegalArgumentException | IllegalStateException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Market-data download failed: " + e.getMessage());
+      }
+    });
   }
 
   // ---- submit_backtest ----------------------------------------------------
@@ -1154,6 +1209,75 @@ public final class McpTools {
 
   // ---- delete_strategy --------------------------------------------------------
 
+  private static SyncToolSpecification validateStrategy(BacktestingService service) {
+    Tool tool = Tool.builder()
+        .name("validate_strategy")
+        .description("Request the platform's lightweight validation of a registered strategy. "
+            + "Queued means this call started a check; otherwise the returned current state may "
+            + "still be pending. Poll get_strategy until validation leaves pending. A passed "
+            + "result only means the class loaded and survived its first synthetic event, not that "
+            + "the strategy is profitable or production-safe.")
+        .inputSchema(schema(Map.of("strategyId", prop("string", "Strategy ID to validate")),
+            List.of("strategyId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      String strategyId = required(request.arguments(), "strategyId");
+      try {
+        ValidationOutcome outcome = service.validateStrategy(strategyId);
+        if (outcome instanceof ValidationOutcome.Queued) {
+          return text("Validation queued for strategy " + outcome.strategyId()
+              + ". Poll get_strategy for the verdict.");
+        }
+        ValidationOutcome.NotQueued notQueued = (ValidationOutcome.NotQueued) outcome;
+        return text("No validation was queued for strategy " + outcome.strategyId()
+            + "; current state:\n" + formatStrategyState(notQueued.state()));
+      } catch (IllegalArgumentException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Failed to validate strategy: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getStrategy(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_strategy")
+        .description("Read the detailed current state of a registered strategy, including its "
+            + "validation verdict or pending status. A passed validation is only a short "
+            + "synthetic-load check, not a profitability guarantee.")
+        .inputSchema(schema(Map.of("strategyId", prop("string", "Strategy ID to read")),
+            List.of("strategyId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      String strategyId = required(request.arguments(), "strategyId");
+      try {
+        return service.getStrategy(strategyId).map(state -> text(formatStrategyState(state)))
+            .orElseGet(() -> text("Strategy " + strategyId + " was not found."));
+      } catch (Exception e) {
+        return error("Failed to read strategy: " + e.getMessage());
+      }
+    });
+  }
+
+  private static String formatStrategyState(com.qtsurfer.api.client.model.StrategyState state) {
+    StringBuilder text = new StringBuilder("Strategy ").append(state.getStrategyId())
+        .append("\nValidation: ").append(state.getValidation());
+    if (state.getCompiledAt() != null) text.append("\nCompiled: ").append(state.getCompiledAt());
+    if (state.getValidatedAt() != null) text.append("\nValidated: ").append(state.getValidatedAt());
+    if (state.getRequiredSources() != null && !state.getRequiredSources().isEmpty()) {
+      text.append("\nRequired sources: ").append(state.getRequiredSources());
+    }
+    if (state.getDetail() != null && !state.getDetail().isBlank()) {
+      text.append("\nDetail: ").append(state.getDetail());
+    }
+    if (Boolean.TRUE.equals(state.getDryRunIncomplete())) text.append("\nDry run: incomplete");
+    if (Boolean.TRUE.equals(state.getValidationStalled())) text.append("\nValidation: stalled");
+    if (state.getNotices() != null && !state.getNotices().isEmpty()) {
+      text.append("\nNotices: ").append(state.getNotices().size());
+      if (state.getNoticesTruncated() != null && state.getNoticesTruncated() > 0) {
+        text.append(" (+").append(state.getNoticesTruncated()).append(" truncated)");
+      }
+    }
+    return text.toString();
+  }
+
   private static SyncToolSpecification deleteStrategy(BacktestingService service) {
     Tool tool = Tool.builder()
         .name("delete_strategy")
@@ -1550,6 +1674,15 @@ public final class McpTools {
     Object value = args.get(key);
     if (value == null || value.toString().isBlank()) return null;
     return value.toString();
+  }
+
+  private static boolean optionalBoolean(Map<String, Object> args, String key, boolean defaultValue) {
+    if (args == null || !args.containsKey(key) || args.get(key) == null) return defaultValue;
+    Object value = args.get(key);
+    if (value instanceof Boolean bool) return bool;
+    if ("true".equalsIgnoreCase(value.toString())) return true;
+    if ("false".equalsIgnoreCase(value.toString())) return false;
+    throw new IllegalArgumentException("Argument '" + key + "' must be a boolean");
   }
 
   private static JsonSchema emptySchema() {

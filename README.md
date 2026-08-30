@@ -149,6 +149,8 @@ Options:
                        (default: QTSURFER_APIKEY env var)
   --upload-root <dir>  Permit dataset upload files only beneath this directory
                        (default: QTSURFER_UPLOAD_ROOT; disabled when absent)
+  --download-root <dir> Permit market-data output only beneath this directory
+                       (default: QTSURFER_DOWNLOAD_ROOT; disabled when absent)
   --stub               Use in-memory stub (no backend required)
   --help               Print this message and exit
 
@@ -166,6 +168,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `delete_dataset` | Delete a caller-owned dataset and its versions |
 | `list_exchanges` | List available exchanges (e.g. `binance`, `binancefutures`) |
 | `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
+| `download_tickers` / `download_klines` | Stream one UTC-hour segment into a guarded local file; returns path metadata only |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
 | `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
 | `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
@@ -181,17 +184,24 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 
 ### Datasets and local files
 
-Dataset upload is deliberately a local-stdio capability. Set `--upload-root /absolute/path` (or
-`QTSURFER_UPLOAD_ROOT`) before starting the server; otherwise `upload_dataset` is disabled. Every
-`filePath` is canonicalised, must remain under that root and must be a readable regular file, so
-traversal and symlink escapes are rejected. The tool only returns dataset/upload/ingest IDs — never
-the short-lived presigned storage URL.
+Dataset upload and market-data export are deliberately local-stdio capabilities, with separate
+least-privilege roots. Set `--upload-root /absolute/path` (or `QTSURFER_UPLOAD_ROOT`) for readable
+dataset files; set `--download-root /absolute/path` (or `QTSURFER_DOWNLOAD_ROOT`) for writable
+market-data output. Each capability is disabled independently when its root is absent. Every upload
+`filePath` is canonicalised, must remain under its root and must be a readable regular file, so
+traversal and symlink escapes are rejected. A download `outputPath` must be relative to the download
+root, have an existing non-symlink parent, and does not overwrite an existing file unless
+`overwrite=true`; it is written through a temporary file and atomically moved into place. The upload
+tool only returns dataset/upload/ingest IDs — never the short-lived presigned storage URL.
 
-For Docker, mount the directory read-only and use its container path:
+For uploads only, mount the upload directory read-only. Add a separate deliberately writable download
+directory when needed:
 
 ```bash
-docker run -i --rm -e QTSURFER_APIKEY -e QTSURFER_UPLOAD_ROOT=/uploads \
-  -v "$PWD/datasets:/uploads:ro" ghcr.io/qtsurfer/mcp-java:latest
+docker run -i --rm -e QTSURFER_APIKEY \
+  -e QTSURFER_UPLOAD_ROOT=/uploads -e QTSURFER_DOWNLOAD_ROOT=/downloads \
+  -v "$PWD/datasets:/uploads:ro" -v "$PWD/exports:/downloads" \
+  ghcr.io/qtsurfer/mcp-java:latest
 ```
 
 Once `get_dataset_upload` returns `READY`, submit a run with `datasetId`; omit `exchangeId` and

@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyTwentyThreeTools() {
-    assertThat(tools).hasSize(23);
+  void registersExactlyTwentySevenTools() {
+    assertThat(tools).hasSize(27);
   }
 
   @Test
@@ -63,10 +63,11 @@ class McpToolsTest {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
         "version", "compile_strategy", "upload_dataset", "list_datasets", "get_dataset", "get_dataset_upload",
-        "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "submit_backtest",
+        "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "download_tickers",
+        "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
-        "list_strategies", "delete_strategy", "get_strategy_code");
+        "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code");
   }
 
   // ---- version ------------------------------------------------------------
@@ -161,6 +162,25 @@ class McpToolsTest {
     var result = call("list_instruments", Map.of("exchangeId", "binancefutures"));
     assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
     assertThat(textOf(result)).contains("BTC/USDT:USDT");
+  }
+
+  @Test
+  void downloadTickersReportsOnlyTheOutputMetadata() {
+    var result = call("download_tickers", Map.of(
+        "exchangeId", "binance", "base", "BTC", "quote", "USDT", "hour", "2026-01-15T10",
+        "outputPath", "exports/btc.lastra"));
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("outputPath=exports/btc.lastra").contains("bytes=0")
+        .doesNotContain("http");
+  }
+
+  @Test
+  void downloadKlinesRejectsAnUnsupportedFormat() {
+    var result = call("download_klines", Map.of(
+        "exchangeId", "binance", "base", "BTC", "quote", "USDT", "hour", "2026-01-15T10",
+        "format", "csv", "outputPath", "exports/btc.csv"));
+    assertThat(result.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(result)).contains("format must be lastra or parquet");
   }
 
   // ---- submit_backtest ----------------------------------------------------
@@ -389,6 +409,16 @@ class McpToolsTest {
         "strategyCode", "// c", "exchangeId", "binance",
         "instrument", "BTC/USDT", "from", "2024-01-01", "to", "2024-01-31"));
     assertThat(textOf(call("list_strategies", Map.of()))).contains("st-").contains("compiled");
+  }
+
+  @Test
+  void validatesAndReadsRegisteredStrategy() {
+    String compiled = textOf(call("compile_strategy", Map.of("strategyCode", "// c")));
+    String strategyId = strategyIdFrom(compiled);
+    assertThat(textOf(call("validate_strategy", Map.of("strategyId", strategyId))))
+        .contains("No validation was queued").contains("Validation: passed");
+    assertThat(textOf(call("get_strategy", Map.of("strategyId", strategyId))))
+        .contains("Strategy " + strategyId).contains("Validation: passed");
   }
 
   @Test

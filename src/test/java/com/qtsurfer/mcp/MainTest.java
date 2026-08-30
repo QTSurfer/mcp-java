@@ -53,6 +53,8 @@ class MainTest {
         .contains("qtsurfer-mcp-java")
         .contains("--apikey")
         .contains("QTSURFER_APIKEY")
+        .contains("--download-root")
+        .contains("QTSURFER_DOWNLOAD_ROOT")
         // Old JWT flag must be gone.
         .doesNotContain("QTS_TOKEN")
         .doesNotContain("--token");

@@ -11,6 +11,7 @@ import com.qtsurfer.api.client.model.SweepMarginalPoint;
 import com.qtsurfer.api.client.model.SweepProgress;
 import com.qtsurfer.api.client.model.SweepRunRow;
 import com.qtsurfer.api.client.model.StrategySummary;
+import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardFold;
 import com.qtsurfer.api.client.model.WalkForwardResult;
@@ -19,6 +20,7 @@ import com.qtsurfer.api.sdk.BoundedEquityCurve;
 import com.qtsurfer.api.sdk.EquityCurvePoint;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
+import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -26,6 +28,7 @@ import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
+import com.qtsurfer.mcp.model.MarketDataDownload;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -140,7 +143,7 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
-  public List<InstrumentDetail> listInstruments(String exchangeId) {
+  public List<InstrumentDetail> listInstruments(String exchangeId, String segment) {
     if ("binancefutures".equals(exchangeId)) {
       return List.of(
           new InstrumentDetail().id("BTC/USDT:USDT").base("BTC").quote("USDT"),
@@ -151,6 +154,31 @@ public class BacktestingServiceStub implements BacktestingService {
         new InstrumentDetail().id("ETH/USDT").base("ETH").quote("USDT"),
         new InstrumentDetail().id("BNB/USDT").base("BNB").quote("USDT"),
         new InstrumentDetail().id("SOL/USDT").base("SOL").quote("USDT"));
+  }
+
+  @Override
+  public MarketDataDownload downloadTickers(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite) {
+    return stubDownload(format, outputPath);
+  }
+
+  @Override
+  public MarketDataDownload downloadKlines(
+      String exchangeId, String base, String quote, String hour, String format,
+      String outputPath, boolean overwrite) {
+    return stubDownload(format, outputPath);
+  }
+
+  private static MarketDataDownload stubDownload(String format, String outputPath) {
+    if (outputPath == null || outputPath.isBlank()) {
+      throw new IllegalArgumentException("outputPath is required");
+    }
+    String normalizedFormat = format == null || format.isBlank() ? "lastra" : format.toLowerCase();
+    if (!"lastra".equals(normalizedFormat) && !"parquet".equals(normalizedFormat)) {
+      throw new IllegalArgumentException("format must be lastra or parquet");
+    }
+    return new MarketDataDownload(outputPath, 0L, normalizedFormat);
   }
 
   @Override
@@ -204,6 +232,26 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   // ---- strategies ------------------------------------------------------------
+
+  @Override
+  public ValidationOutcome validateStrategy(String strategyId) {
+    StrategyState state = strategyState(strategyId);
+    return new ValidationOutcome.NotQueued(state);
+  }
+
+  @Override
+  public Optional<StrategyState> getStrategy(String strategyId) {
+    return strategies.containsKey(strategyId)
+        ? Optional.of(strategyState(strategyId)) : Optional.empty();
+  }
+
+  private StrategyState strategyState(String strategyId) {
+    if (!strategies.containsKey(strategyId)) {
+      throw new IllegalArgumentException("No such strategy: " + strategyId);
+    }
+    return new StrategyState().strategyId(strategyId)
+        .validation(StrategyState.ValidationEnum.PASSED);
+  }
 
   @Override
   public List<StrategySummary> listStrategies() {
