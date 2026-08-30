@@ -26,6 +26,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   read/download method names. The server uses only the new names; the SDK retains deprecated aliases
   for direct consumers during the 0.x line.
 
+## [0.10.6] — 2026-08-30
+
+### Added ✨
+
+- Publish the MCP server against the resolvable `sdk-java` 0.20.0 artifact, including bounded
+  equity-curve access and guarded market-data downloads.
+
 ## [0.10.5] — 2026-08-25
 
 ### Changed 🔄
