@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.7] — 2026-08-31
+
+### Fixed 🐛
+
+- Register the SDK's `DeclaredProperty` model for GraalVM native reflection. This fixes native
+  `submit_backtest`/strategy compilation failures that could not construct the model, while JVM
+  execution was unaffected.
+
+### Changed 🔄
+
+- Expand MCP tool descriptions with the dataset CSV prerequisites and complete upload-to-run flow,
+  clarify that market-data downloads are written on the MCP server, and cross-link strategy
+  inspection and lifecycle tools for agent discovery.
+
 ### Added ✨
 
 - **`download_tickers` and `download_klines`** stream one UTC-hour Lastra or Parquet segment to a

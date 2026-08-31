@@ -112,6 +112,9 @@ class ReflectConfigTest {
       MODEL + "CancelSweep200Response",
       MODEL + "CancelSweep200Response$StatusEnum",
       MODEL + "CompileStrategy200Response",
+      // POST /strategy returns declaredProperties; the SDK consumes them while compiling and
+      // returns its own Strategy type, so the derived return-type walk cannot reach this model.
+      MODEL + "DeclaredProperty",
       MODEL + "DataSourceType",
       MODEL + "DeleteStrategy200Response",
       MODEL + "DeleteStrategy200Response$DeletedEnum",

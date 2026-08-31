@@ -88,6 +88,25 @@ class McpToolsTest {
   }
 
   @Test
+  void agentFacingDescriptionsExplainTheFileAndStrategyLifecycles() {
+    assertThat(tool("upload_dataset").tool().description())
+        .contains("CSV needs a header", "timestamp and close", "get_dataset_upload", "READY",
+            "submit_backtest or submit_sweep");
+    assertThat(tool("download_tickers").tool().description())
+        .contains("server running MCP", "lastra and may be parquet", "relative path and byte count");
+    assertThat(tool("download_klines").tool().description())
+        .contains("server running MCP", "lastra and may be parquet", "relative path and byte count");
+    assertThat(tool("get_strategy").tool().description())
+        .contains("compile_strategy, submit_backtest, submit_sweep, or list_strategies");
+    assertThat(tool("delete_strategy").tool().description())
+        .contains("get_strategy_code", "list_strategies");
+    assertThat(tool("get_strategy_code").tool().description())
+        .contains("get_strategy", "compile_strategy or list_strategies");
+    assertThat(tool("get_sweep_status").tool().description())
+        .contains("submitted in this session", "no lookup for a sweep id from anywhere else");
+  }
+
+  @Test
   void compileStrategyReturnsRegisteredId() {
     var result = call("compile_strategy", Map.of("strategyCode", "class DemoStrategy {}"));
 

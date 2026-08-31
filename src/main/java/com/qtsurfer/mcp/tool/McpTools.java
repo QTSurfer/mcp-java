@@ -153,8 +153,10 @@ public final class McpTools {
         .description("Create a caller-owned dataset or upload its next version from a local file, then "
             + "start asynchronous ingest. File access is disabled unless the server operator configured "
             + "an upload root; filePath must resolve beneath it. Never pass URLs or file contents. "
-            + "When datasetId is absent, name and instrument are required. Returns ids only, never a "
-            + "presigned storage URL; poll with get_dataset_upload.")
+            + "The local CSV needs a header with required timestamp and close columns. When datasetId is "
+            + "absent, name and instrument are required. Returns ids only, never a presigned storage URL; "
+            + "poll with get_dataset_upload until READY, then use datasetId with submit_backtest or "
+            + "submit_sweep. FAILED requires a corrected new version.")
         .inputSchema(schema(Map.of(
             "datasetId", prop("string", "Existing dataset id for a new version; omit to create one"),
             "name", prop("string", "Dataset name; required when datasetId is omitted"),
@@ -404,7 +406,8 @@ public final class McpTools {
       BacktestingService service, String name, String kind, boolean tickers) {
     Tool tool = Tool.builder().name(name)
         .description("Stream exactly one UTC hour of " + kind + " to a local file beneath the "
-            + "server operator's configured download root. hour is YYYY-MM-DDTHH; format defaults "
+            + "server operator's configured download root, on the server running MCP rather than the "
+            + "caller's workstation. hour is YYYY-MM-DDTHH; format defaults "
             + "to lastra and may be parquet. outputPath is relative to that root; its parent must "
             + "already exist. Existing files are rejected unless overwrite=true. The response "
             + "contains only the relative path and byte count, never binary data.")
@@ -1242,7 +1245,9 @@ public final class McpTools {
     Tool tool = Tool.builder().name("get_strategy")
         .description("Read the detailed current state of a registered strategy, including its "
             + "validation verdict or pending status. A passed validation is only a short "
-            + "synthetic-load check, not a profitability guarantee.")
+            + "synthetic-load check, not a profitability guarantee. Obtain strategyId from "
+            + "compile_strategy, submit_backtest, submit_sweep, or list_strategies; use "
+            + "get_strategy_code to inspect its source or delete_strategy to release it.")
         .inputSchema(schema(Map.of("strategyId", prop("string", "Strategy ID to read")),
             List.of("strategyId"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
@@ -1285,7 +1290,8 @@ public final class McpTools {
             + "completely unaffected — deletion only stops the strategy counting against the "
             + "account and stops future validation or re-run under this id. Recompiling identical "
             + "source afterward registers a brand-new strategy under a new id; it does not "
-            + "\"undelete\" this one.")
+            + "\"undelete\" this one. Use list_strategies to choose an id, get_strategy to inspect its "
+            + "state, or get_strategy_code to inspect its source before releasing it.")
         .inputSchema(schema(
             Map.of("strategyId", prop("string",
                 "Strategy ID, e.g. from list_strategies")),
@@ -1311,7 +1317,8 @@ public final class McpTools {
     Tool tool = Tool.builder()
         .name("get_strategy_code")
         .description("Fetch the exact source last registered for a strategy id — the same text "
-            + "originally compiled, whitespace and comments included.")
+            + "originally compiled, whitespace and comments included. Use get_strategy for its current "
+            + "validation state; obtain an id from compile_strategy or list_strategies.")
         .inputSchema(schema(
             Map.of("strategyId", prop("string",
                 "Strategy ID, e.g. from list_strategies")),

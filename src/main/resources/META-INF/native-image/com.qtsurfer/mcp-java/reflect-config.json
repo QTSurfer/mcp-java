@@ -319,6 +319,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.DeclaredProperty",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.DeleteStrategy200Response",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
