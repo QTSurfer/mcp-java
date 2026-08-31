@@ -261,7 +261,7 @@ class McpToolsTest {
 
   @Test
   void getJobStatusRendersWinRateAndCagrAsPercentFromApiFractions() {
-    // JobResult.winRate/cagr arrive from the API as 0-1 fractions (api-feedback#22) --
+    // JobResult.winRate/cagr arrive from the API as 0-1 fractions --
     // the tool text must multiply by 100, not print the raw fraction with a bare "%".
     BacktestingServiceStub stub = new BacktestingServiceStub() {
       @Override
@@ -595,7 +595,7 @@ class McpToolsTest {
 
   @Test
   void getSweepStatusRendersLeaderboardWinRateAsPercentFromApiFraction() {
-    // SweepRunRow.winRate also arrives as a 0-1 fraction (api-feedback#22); the stub's first
+    // SweepRunRow.winRate also arrives as a 0-1 fraction; the stub's first
     // row is 0.57 -- the leaderboard line must show win%=57.0000, not win%=0.5700.
     String sweepId = submitSweep(WIDE_GRID, null);
     String text = textOf(call("get_sweep_status", Map.of("sweepId", sweepId)));
