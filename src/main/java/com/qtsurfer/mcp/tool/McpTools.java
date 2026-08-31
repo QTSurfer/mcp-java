@@ -985,7 +985,7 @@ public final class McpTools {
     appendMetric(sb, "pnl", row.getPnl());
     appendMetric(sb, "maxDD%", row.getMaxDdPct());
     if (row.getTrades() != null) sb.append("  trades=").append(row.getTrades());
-    appendMetric(sb, "win%", row.getWinRate());
+    appendMetric(sb, "win%", row.getWinRate() == null ? null : row.getWinRate() * 100);
     if (Boolean.TRUE.equals(row.getAborted())) sb.append("  ABORTED");
     if (Boolean.TRUE.equals(row.getBelowTradeFloor())) sb.append("  below-trade-floor");
     if (row.getParams() != null) sb.append("  params=").append(row.getParams());
@@ -1442,7 +1442,7 @@ public final class McpTools {
       if (result.totalTrades() != null) {
         sb.append("Trades:       ").append(result.totalTrades());
         if (result.winRate() != null) {
-          sb.append(String.format(" (win rate: %.1f%%)", result.winRate()));
+          sb.append(String.format(" (win rate: %.1f%%)", result.winRate() * 100));
         }
         sb.append('\n');
       }

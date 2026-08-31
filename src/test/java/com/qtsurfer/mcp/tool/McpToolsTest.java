@@ -259,6 +259,26 @@ class McpToolsTest {
     assertThat(textOf(status)).contains(jobId, "ETH/USDT");
   }
 
+  @Test
+  void getJobStatusRendersWinRateAndCagrAsPercentFromApiFractions() {
+    // JobResult.winRate/cagr arrive from the API as 0-1 fractions (api-feedback#22) --
+    // the tool text must multiply by 100, not print the raw fraction with a bare "%".
+    BacktestingServiceStub stub = new BacktestingServiceStub() {
+      @Override
+      public Optional<JobSummary> getJobStatus(String jobId, String exchangeId) {
+        if (!"bt-metrics".equals(jobId)) return super.getJobStatus(jobId, exchangeId);
+        JobResult r = new JobResult(
+            100.0, 10L, 0.6, 1.2, 1.5, 0.15, -5.0, -4.5, 0L, "host", 1000.0, List.of());
+        return Optional.of(new JobSummary(
+            "bt-metrics", "BTC/USDT", "binance", JobStatus.COMPLETED, "2024-01-01T00:00:00Z", r));
+      }
+    };
+    String text = callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
+        "get_job_status", Map.of("jobId", "bt-metrics"));
+
+    assertThat(text).contains("win rate: 60.0%").contains("CAGR:         15.00%");
+  }
+
   // ---- cancel_backtest ------------------------------------------------------
 
   @Test
@@ -571,6 +591,15 @@ class McpToolsTest {
         "walkForward", Map.of("folds", 1)));
     assertThat(result.isError()).isEqualTo(Boolean.TRUE);
     assertThat(textOf(result)).contains("folds");
+  }
+
+  @Test
+  void getSweepStatusRendersLeaderboardWinRateAsPercentFromApiFraction() {
+    // SweepRunRow.winRate also arrives as a 0-1 fraction (api-feedback#22); the stub's first
+    // row is 0.57 -- the leaderboard line must show win%=57.0000, not win%=0.5700.
+    String sweepId = submitSweep(WIDE_GRID, null);
+    String text = textOf(call("get_sweep_status", Map.of("sweepId", sweepId)));
+    assertThat(text).contains("win%=57.0000");
   }
 
   @Test

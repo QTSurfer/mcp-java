@@ -399,7 +399,7 @@ public class BacktestingServiceStub implements BacktestingService {
             .runIx(i).rank(i + 1)
             .sharpe(1.5 - i * 0.1).sortino(1.9 - i * 0.1)
             .pnl(120.0 - i * 10).pnlPct(12.0 - i).maxDdPct(-6.5 - i)
-            .trades(80L - i).winRate(55.0 - i).aborted(false);
+            .trades(80L - i).winRate(0.55 - i * 0.01).aborted(false);
         rows.add(row);
         foldRows.add(new WalkForwardFold()
             .foldIx(i).vectorsRun(gridSize)
@@ -425,7 +425,7 @@ public class BacktestingServiceStub implements BacktestingService {
           .deflatedSharpe(0.97 - i * 0.02)
           .sharpe(1.6 - i * 0.03).sortino(2.0 - i * 0.03)
           .pnl(150.0 - i * 4).pnlPct(15.0 - i * 0.4).cagr(0.21 - i * 0.005)
-          .maxDdPct(-7.0 - i * 0.2).trades(90L - i).winRate(57.0 - i * 0.3)
+          .maxDdPct(-7.0 - i * 0.2).trades(90L - i).winRate(0.57 - i * 0.003)
           .belowTradeFloor(false).aborted(false).runtimeMs(1200L + i));
     }
     return result

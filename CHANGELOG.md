@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.10.8] — 2026-08-31
+
+### Fixed 🐛
+
+- `get_job_status`'s "win rate" and the sweep leaderboard's "win%" rendered the API's `winRate`
+  fraction (0.0-1.0) with a bare `%` appended instead of multiplying by 100, e.g. showing `0.0%`
+  for a strategy that actually won 3.3% of its trades. `cagr` was unaffected — it already
+  multiplied by 100. Reported in api-feedback#22.
+
 ## [0.10.7] — 2026-08-31
 
 ### Fixed 🐛
