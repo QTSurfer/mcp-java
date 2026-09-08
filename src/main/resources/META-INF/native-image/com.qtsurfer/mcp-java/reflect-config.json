@@ -397,6 +397,24 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.ScalarStrategyParamValue",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ScalarStrategyParamValue$ScalarStrategyParamValueSerializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.ScalarStrategyParamValue$ScalarStrategyParamValueDeserializer",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.ExecuteSweepAccepted",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

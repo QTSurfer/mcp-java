@@ -107,7 +107,7 @@ public class BacktestingServiceStub implements BacktestingService {
       }
       targetDatasetId = "ds-" + UUID.randomUUID().toString().substring(0, 8);
       datasets.put(targetDatasetId, new DatasetSummary(
-          targetDatasetId, name, instrument, null, null, null, null));
+          targetDatasetId, name, instrument, null, null, null, null, null));
     } else if (!datasets.containsKey(targetDatasetId)) {
       throw new IllegalArgumentException("No such dataset: " + targetDatasetId);
     }

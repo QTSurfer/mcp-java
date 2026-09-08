@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-09-08
+
+### Added ✨
+
+- `submit_backtest` accepts up to 64 scalar strategy parameters and returns their echoed values
+  with the completed job.
+
+### Changed 🔄
+
+- Dataset summaries report their stored `dataFormat`, so an agent can choose a compatible reader
+  without receiving a presigned data URL.
+- Native-image reflection configuration includes the SDK's scalar parameter model.
+
 ## [0.10.8] — 2026-08-31
 
 ### Fixed 🐛

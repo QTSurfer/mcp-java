@@ -153,7 +153,7 @@ public final class McpTools {
         .description("Create a caller-owned dataset or upload its next version from a local file, then "
             + "start asynchronous ingest. File access is disabled unless the server operator configured "
             + "an upload root; filePath must resolve beneath it. Never pass URLs or file contents. "
-            + "The local CSV needs a header with required timestamp and close columns. When datasetId is "
+            + "A CSV needs a header with required timestamp and close columns; Parquet is accepted as-is. When datasetId is "
             + "absent, name and instrument are required. Returns ids only, never a presigned storage URL; "
             + "poll with get_dataset_upload until READY, then use datasetId with submit_backtest or "
             + "submit_sweep. FAILED requires a corrected new version.")
@@ -161,7 +161,7 @@ public final class McpTools {
             "datasetId", prop("string", "Existing dataset id for a new version; omit to create one"),
             "name", prop("string", "Dataset name; required when datasetId is omitted"),
             "instrument", prop("string", "CCXT instrument, e.g. BTC/USDT; required for a new dataset"),
-            "filePath", prop("string", "Local CSV path beneath the server's configured upload root")),
+            "filePath", prop("string", "Local CSV or Parquet path beneath the server's configured upload root")),
             List.of("filePath")))
         .build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
@@ -270,7 +270,7 @@ public final class McpTools {
     return "Dataset " + dataset.datasetId() + ": " + dataset.name() + " | instrument=" + dataset.instrument()
         + " | currentVersion=" + valueOrUnknown(dataset.currentVersionId()) + " | range="
         + valueOrUnknown(dataset.from()) + " → " + valueOrUnknown(dataset.to()) + " | cadence="
-        + valueOrUnknown(dataset.cadence());
+        + valueOrUnknown(dataset.cadence()) + " | dataFormat=" + valueOrUnknown(dataset.dataFormat());
   }
 
   private static String formatUploadStatus(DatasetUploadStatus upload) {
@@ -462,6 +462,7 @@ public final class McpTools {
                 "datasetVersionId", prop("string", "Optional historical version of datasetId"),
                 "from",         prop("string", "Backtest start date, ISO-8601 (e.g. 2024-01-01)"),
                 "to",           prop("string", "Backtest end date, ISO-8601 (e.g. 2024-03-31)"),
+                "params", prop("object", "Optional scalar strategy properties for this one run; values are numbers, strings, or booleans"),
                 "equityCurve", prop("object", "Optional {resample,differential,outMode}; outMode is array, short or url")),
             List.of("strategyCode", "from", "to")))
         .build();
@@ -472,6 +473,8 @@ public final class McpTools {
             BacktestRequest.Builder builder = BacktestRequest.builder()
                 .strategy(required(args, "strategyCode")).from(required(args, "from")).to(required(args, "to"));
             configureBacktestSource(builder, args);
+            Map<String, Object> params = parseBacktestParams(args.get("params"));
+            if (!params.isEmpty()) builder.params(params);
             EquityCurveOptions equityCurve = parseBacktestCurve(args.get("equityCurve"));
             if (equityCurve != null) builder.equityCurve(equityCurve);
             String jobId = service.submitBacktest(builder.build());
@@ -1469,6 +1472,9 @@ public final class McpTools {
         }
         sb.append('\n');
       }
+      if (result.params() != null && !result.params().isEmpty()) {
+        sb.append("Parameters: ").append(result.params()).append('\n');
+      }
     }
     return sb.toString().stripTrailing();
   }
@@ -1564,6 +1570,21 @@ public final class McpTools {
     } else {
       builder.exchangeId(required(args, "exchangeId")).instrument(instrument);
     }
+  }
+
+  private static Map<String, Object> parseBacktestParams(Object raw) {
+    Map<String, Object> values = objectMap(raw, "params");
+    if (values == null) return Map.of();
+    if (values.size() > 64) {
+      throw new IllegalArgumentException("params may hold at most 64 properties");
+    }
+    for (Map.Entry<String, Object> entry : values.entrySet()) {
+      Object value = entry.getValue();
+      if (!(value instanceof Number) && !(value instanceof String) && !(value instanceof Boolean)) {
+        throw new IllegalArgumentException("params values must be numbers, strings, or booleans");
+      }
+    }
+    return Map.copyOf(values);
   }
 
   private static void configureSweepSource(SweepRequest.Builder builder, Map<String, Object> args) {

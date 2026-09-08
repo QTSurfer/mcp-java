@@ -1,6 +1,7 @@
 package com.qtsurfer.mcp.model;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Execution metrics captured when a backtest job reaches COMPLETED state.
@@ -22,5 +23,23 @@ public record JobResult(
     Long signalCount,
     String hostName,
     Double iops,
-    List<EquityPoint> equityCurve
-) {}
+    List<EquityPoint> equityCurve,
+    Map<String, Object> params
+) {
+  public JobResult(
+      Double pnlTotal,
+      Long totalTrades,
+      Double winRate,
+      Double sharpeRatio,
+      Double sortinoRatio,
+      Double cagr,
+      Double maxDrawdown,
+      Double maxDrawdownPercent,
+      Long signalCount,
+      String hostName,
+      Double iops,
+      List<EquityPoint> equityCurve) {
+    this(pnlTotal, totalTrades, winRate, sharpeRatio, sortinoRatio, cagr, maxDrawdown,
+        maxDrawdownPercent, signalCount, hostName, iops, equityCurve, Map.of());
+  }
+}

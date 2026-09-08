@@ -73,6 +73,9 @@ class ReflectConfigTest {
    */
   private static final List<String> PINNED_REQUEST_BODIES = List.of(
       MODEL + "ExecuteBacktestRequest",
+      MODEL + "ScalarStrategyParamValue",
+      MODEL + "ScalarStrategyParamValue$ScalarStrategyParamValueSerializer",
+      MODEL + "ScalarStrategyParamValue$ScalarStrategyParamValueDeserializer",
       MODEL + "PrepareRequest",
       MODEL + "PrepareRequest$CadenceEnum",
       MODEL + "ExecuteSweepRequest",

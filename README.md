@@ -161,7 +161,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 
 | Tool | Description |
 |------|-------------|
-| `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV and start ingest; never exposes a presigned URL |
+| `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV or Parquet file and start ingest; never exposes a presigned URL |
 | `list_datasets` / `get_dataset` | List datasets or read one dataset's metadata and current version |
 | `get_dataset_upload` | Poll the asynchronous ingest after an upload |
 | `finalize_dataset_upload` | Retry finalization after a successful PUT whose original MCP response was lost |

@@ -214,6 +214,21 @@ class McpToolsTest {
   }
 
   @Test
+  void submitBacktestAcceptsScalarParamsAndRejectsCompositeValues() {
+    var accepted = call("submit_backtest", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31",
+        "params", Map.of("ema.fast", 9, "enabled", true, "label", "fast")));
+    assertThat(accepted.isError()).isNotEqualTo(Boolean.TRUE);
+
+    var rejected = call("submit_backtest", Map.of(
+        "strategyCode", "// code", "exchangeId", "binance", "instrument", "BTC/USDT",
+        "from", "2024-01-01", "to", "2024-03-31", "params", Map.of("ema.fast", List.of(9, 21))));
+    assertThat(rejected.isError()).isEqualTo(Boolean.TRUE);
+    assertThat(textOf(rejected)).contains("params values");
+  }
+
+  @Test
   void submitBacktestReturnsErrorOnBlankStrategy() {
     var result = call("submit_backtest", Map.of(
         "strategyCode", "   ", "exchangeId", "binance",

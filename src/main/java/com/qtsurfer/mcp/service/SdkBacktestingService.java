@@ -10,6 +10,7 @@ import com.qtsurfer.api.client.model.DatasetUploadState;
 import com.qtsurfer.api.client.model.DatasetWithLinks;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
+import com.qtsurfer.api.client.model.ScalarStrategyParamValue;
 import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.api.client.model.JobState;
 import com.qtsurfer.api.client.model.ResultMap;
@@ -49,6 +50,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -222,13 +224,13 @@ public class SdkBacktestingService implements BacktestingService {
   private static DatasetSummary datasetSummary(Dataset dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence());
+        dataset.getCadence(), null);
   }
 
   private static DatasetSummary datasetSummary(DatasetWithLinks dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence());
+        dataset.getCadence(), stringify(dataset.getDataFormat()));
   }
 
   private static DatasetUploadStatus uploadStatus(String datasetId, DatasetUploadState state) {
@@ -427,7 +429,14 @@ public class SdkBacktestingService implements BacktestingService {
         r.getSharpeRatio(), r.getSortinoRatio(), r.getCagr(),
         r.getMaxDrawdown(), r.getMaxDrawdownPercent(),
         r.getSignalCount() != null ? r.getSignalCount().longValue() : null,
-        r.getHostName(), r.getIops(), curve);
+        r.getHostName(), r.getIops(), curve, resultParams(r.getParams()));
+  }
+
+  private static Map<String, Object> resultParams(Map<String, ScalarStrategyParamValue> params) {
+    if (params == null || params.isEmpty()) return Map.of();
+    Map<String, Object> values = new LinkedHashMap<>();
+    params.forEach((name, value) -> values.put(name, value == null ? null : value.getActualInstance()));
+    return Map.copyOf(values);
   }
 
   /** Convert either supported inline curve encoding into the MCP's compact point representation. */

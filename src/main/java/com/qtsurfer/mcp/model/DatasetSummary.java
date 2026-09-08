@@ -8,4 +8,5 @@ public record DatasetSummary(
     String currentVersionId,
     String from,
     String to,
-    String cadence) {}
+    String cadence,
+    String dataFormat) {}
