@@ -171,6 +171,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
 | `download_tickers` / `download_klines` | Stream one UTC-hour segment into a guarded local file; returns path metadata only |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
+| `storeSignals` | Optional on selected `submit_backtest` or `submit_sweep` calls; disabled by default because retained signals consume storage quota |
 | `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
 | `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
 | `list_jobs` | List jobs from the current session, optionally filtered by status |

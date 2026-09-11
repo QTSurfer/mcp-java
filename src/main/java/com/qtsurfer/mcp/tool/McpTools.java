@@ -508,6 +508,8 @@ public final class McpTools {
         .description("Compile a Java strategy and queue a backtesting run on QTSurfer. "
             + "Returns the job ID immediately — poll with get_job_status. "
             + "Provide either exchangeId plus instrument, or datasetId (the server derives exchangeId=user). "
+            + "Set storeSignals only for selected runs that need emitted signals: it is disabled by default "
+            + "and retained signals consume the account's storage quota. "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
             + "calling this in a loop.")
         .inputSchema(schema(
@@ -523,6 +525,7 @@ public final class McpTools {
                 "from",         prop("string", "Backtest start date, ISO-8601 (e.g. 2024-01-01)"),
                 "to",           prop("string", "Backtest end date, ISO-8601 (e.g. 2024-03-31)"),
                 "params", prop("object", "Optional scalar strategy properties for this one run; values are numbers, strings, or booleans"),
+                "storeSignals", prop("boolean", "Optional, false by default. Retain emitted signals for this run; consumes storage quota"),
                 "equityCurve", prop("object", "Optional {resample,differential,outMode}; outMode is array, short or url")),
             List.of("strategyCode", "from", "to")))
         .build();
@@ -535,6 +538,7 @@ public final class McpTools {
             configureBacktestSource(builder, args);
             Map<String, Object> params = parseBacktestParams(args.get("params"));
             if (!params.isEmpty()) builder.params(params);
+            if (args.containsKey("storeSignals")) builder.storeSignals(optionalBoolean(args, "storeSignals", false));
             EquityCurveOptions equityCurve = parseBacktestCurve(args.get("equityCurve"));
             if (equityCurve != null) builder.equityCurve(equityCurve);
             String jobId = service.submitBacktest(builder.build());
@@ -748,7 +752,8 @@ public final class McpTools {
             + "what runs and the shape of the answer (see get_sweep_status). "
             + "Returns the sweep id: poll it with get_sweep_status, stop it with cancel_sweep, and "
             + "ask which parameter mattered with get_sweep_sensitivity. Those three only answer for "
-            + "sweeps submitted in this session.")
+            + "sweeps submitted in this session. Set storeSignals only for selected sweeps that need "
+            + "emitted signals: it is disabled by default and retained signals consume storage quota.")
         .inputSchema(schema(
             mapOf(
                 "strategyCode", prop("string",
@@ -791,6 +796,7 @@ public final class McpTools {
                         + "the fold's unseen tail; optional \"inSamplePct\" (10..90) sets the split. "
                         + "folds must be at least 2. The answer is then one row per fold rather than "
                         + "a ranked grid."),
+                "storeSignals", prop("boolean", "Optional, false by default. Retain emitted signals for every trial; consumes storage quota"),
                 "equityCurve", prop("object", "Optional {mode,n,maxPct,resample,differential,outMode}; "
                     + "controls retained sweep-run curves.")),
             List.of("strategyCode", "from", "to", "params")))
@@ -815,6 +821,7 @@ public final class McpTools {
             if (seed != null) builder.seed(seed.longValue());
             WalkForwardSpec walkForward = parseWalkForward(args.get("walkForward"));
             if (walkForward != null) builder.walkForward(walkForward);
+            if (args.containsKey("storeSignals")) builder.storeSignals(optionalBoolean(args, "storeSignals", false));
             EquityCurveRequest equityCurve = parseSweepCurve(args.get("equityCurve"));
             if (equityCurve != null) builder.equityCurve(equityCurve);
 
@@ -1500,33 +1507,33 @@ public final class McpTools {
     if (result != null) {
       sb.append("\n\n=== Results ===\n");
       if (result.pnlTotal() != null) {
-        sb.append(String.format("P&L:          %+.4f\n", result.pnlTotal()));
+        sb.append(String.format(Locale.ROOT, "P&L:          %+.4f\n", result.pnlTotal()));
       }
       if (result.totalTrades() != null) {
         sb.append("Trades:       ").append(result.totalTrades());
         if (result.winRate() != null) {
-          sb.append(String.format(" (win rate: %.1f%%)", result.winRate() * 100));
+          sb.append(String.format(Locale.ROOT, " (win rate: %.1f%%)", result.winRate() * 100));
         }
         sb.append('\n');
       }
       if (result.sharpeRatio() != null) {
-        sb.append(String.format("Sharpe:       %.3f", result.sharpeRatio()));
+        sb.append(String.format(Locale.ROOT, "Sharpe:       %.3f", result.sharpeRatio()));
         if (result.sortinoRatio() != null) {
-          sb.append(String.format(" | Sortino: %.3f", result.sortinoRatio()));
+          sb.append(String.format(Locale.ROOT, " | Sortino: %.3f", result.sortinoRatio()));
         }
         sb.append('\n');
       }
       if (result.cagr() != null) {
-        sb.append(String.format("CAGR:         %.2f%%\n", result.cagr() * 100));
+        sb.append(String.format(Locale.ROOT, "CAGR:         %.2f%%\n", result.cagr() * 100));
       }
       if (result.maxDrawdownPercent() != null) {
-        sb.append(String.format("Max Drawdown: %.2f%%\n", result.maxDrawdownPercent()));
+        sb.append(String.format(Locale.ROOT, "Max Drawdown: %.2f%%\n", result.maxDrawdownPercent()));
       }
       if (result.signalCount() != null) {
         sb.append("Signals:      ").append(result.signalCount()).append('\n');
       }
       if (result.iops() != null) {
-        sb.append(String.format("Throughput:   %.0f iops", result.iops()));
+        sb.append(String.format(Locale.ROOT, "Throughput:   %.0f iops", result.iops()));
         if (result.hostName() != null) {
           sb.append(" (").append(result.hostName()).append(')');
         }

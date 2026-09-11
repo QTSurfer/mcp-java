@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-09-11
+
+### Added ✨
+
+- Backtests and sweeps can retain emitted signals with `storeSignals`.
+
+### Fixed 🐛
+
+- Native dataset listings register their generated response models.
+
 ## [0.12.1] — 2026-09-11
 
 ### Fixed 🐛

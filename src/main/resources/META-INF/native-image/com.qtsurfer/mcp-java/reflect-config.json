@@ -574,6 +574,8 @@
   { "name": "com.qtsurfer.api.client.model.DatasetImportCreated$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.DatasetImportState", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.DatasetImportState$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.Dataset", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.ListDatasets200Response", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   {
     "name": "com.qtsurfer.api.client.model.ResponseError",
     "allDeclaredConstructors": true,

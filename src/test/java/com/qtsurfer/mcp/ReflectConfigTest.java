@@ -124,6 +124,7 @@ class ReflectConfigTest {
       // returns its own Strategy type, so the derived return-type walk cannot reach this model.
       MODEL + "DeclaredProperty",
       MODEL + "DataSourceType",
+      MODEL + "Dataset",
       MODEL + "DatasetImportCreated",
       MODEL + "DatasetImportCreated$StatusEnum",
       MODEL + "DatasetImportState",
@@ -136,6 +137,7 @@ class ReflectConfigTest {
       MODEL + "InstrumentListMeta$SegmentEnum",
       MODEL + "InstrumentListResponse",
       MODEL + "ListStrategies200Response",
+      MODEL + "ListDatasets200Response",
       MODEL + "PrepareJobState",
       MODEL + "PrepareJobState$StatusEnum",
       MODEL + "PrepareJobStateAllOfHoursWithoutData",
