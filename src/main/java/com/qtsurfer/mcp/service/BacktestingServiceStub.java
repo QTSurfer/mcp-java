@@ -27,6 +27,8 @@ import com.qtsurfer.mcp.model.JobSummary;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.DatasetImportResult;
+import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.MarketDataDownload;
 
@@ -65,6 +67,7 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, String> strategySource = new ConcurrentHashMap<>();
   private final Map<String, DatasetSummary> datasets = new ConcurrentHashMap<>();
   private final Map<String, DatasetUploadStatus> uploads = new ConcurrentHashMap<>();
+  private final Map<String, DatasetImportStatus> imports = new ConcurrentHashMap<>();
 
   // ---- datasets -------------------------------------------------------------
 
@@ -128,6 +131,23 @@ public class BacktestingServiceStub implements BacktestingService {
     DatasetUploadStatus status = uploads.get(uploadKey(datasetId, uploadId));
     if (status == null) throw new IllegalArgumentException("No such dataset upload");
     return status.ingestJobId();
+  }
+
+  @Override
+  public DatasetImportResult importDataset(String name, String instrument, String from, String to,
+      String network, String protocol, String version, String contract) {
+    String datasetId = "ds-" + UUID.randomUUID().toString().substring(0, 8);
+    String importId = "imp-" + UUID.randomUUID().toString().substring(0, 8);
+    String jobId = "ing-" + UUID.randomUUID().toString().substring(0, 8);
+    datasets.put(datasetId, new DatasetSummary(datasetId, name, instrument, null, from, to, null, null));
+    imports.put(uploadKey(datasetId, importId), new DatasetImportStatus(
+        datasetId, importId, "FETCHING", jobId, null, null));
+    return new DatasetImportResult(datasetId, importId, jobId, "FETCHING");
+  }
+
+  @Override
+  public Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId) {
+    return Optional.ofNullable(imports.get(uploadKey(datasetId, importId)));
   }
 
   private static String uploadKey(String datasetId, String uploadId) {

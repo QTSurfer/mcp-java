@@ -5,6 +5,10 @@ import com.qtsurfer.api.client.model.EquityCurveResult;
 import com.qtsurfer.api.client.model.CreateDatasetRequest;
 import com.qtsurfer.api.client.model.Dataset;
 import com.qtsurfer.api.client.model.DatasetCreated;
+import com.qtsurfer.api.client.model.DatasetImportCreated;
+import com.qtsurfer.api.client.model.DatasetImportDexRequest;
+import com.qtsurfer.api.client.model.DatasetImportRequest;
+import com.qtsurfer.api.client.model.DatasetImportState;
 import com.qtsurfer.api.client.model.DatasetUploadSession;
 import com.qtsurfer.api.client.model.DatasetUploadState;
 import com.qtsurfer.api.client.model.DatasetWithLinks;
@@ -33,6 +37,8 @@ import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.DatasetImportResult;
+import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
@@ -43,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -211,6 +218,35 @@ public class SdkBacktestingService implements BacktestingService {
   @Override
   public String finalizeDatasetUpload(String datasetId, String uploadId) {
     return qts.finalizeDatasetUpload(datasetId, uploadId).getJobId();
+  }
+
+  @Override
+  public DatasetImportResult importDataset(String name, String instrument, String from, String to,
+      String network, String protocol, String version, String contract) {
+    if (protocol == null || version == null) {
+      throw new IllegalArgumentException("protocol and version are required for a native-cadence DEX import");
+    }
+    DatasetImportDexRequest dex = new DatasetImportDexRequest()
+        .network(DatasetImportDexRequest.NetworkEnum.valueOf(network.toUpperCase()))
+        .contract(contract)
+        .id(DatasetImportDexRequest.IdEnum.valueOf(protocol.toUpperCase()))
+        .version(DatasetImportDexRequest.VersionEnum.valueOf(version.toUpperCase()));
+    DatasetImportCreated created = qts.importDataset(new DatasetImportRequest()
+        .name(name).instrument(instrument).from(OffsetDateTime.parse(from)).to(OffsetDateTime.parse(to))
+        .type(DatasetImportRequest.TypeEnum.DEX).dex(dex));
+    return new DatasetImportResult(created.getDatasetId(), created.getImportId(), created.getJobId(),
+        String.valueOf(created.getStatus()));
+  }
+
+  @Override
+  public Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId) {
+    try {
+      DatasetImportState state = qts.getDatasetImport(datasetId, importId);
+      return Optional.of(new DatasetImportStatus(datasetId, state.getImportId(), String.valueOf(state.getStatus()),
+          state.getJobId(), state.getError(), state.getVersion() == null ? null : state.getVersion().getId()));
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
   }
 
   private Path guardedUploadFile(String filePath) {

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-09-11
+
+### Added ✨
+
+- `import_dataset` and `get_dataset_import` fetch DEX history and report its ingest state.
+
 ## [0.11.0] — 2026-09-08
 
 ### Added ✨

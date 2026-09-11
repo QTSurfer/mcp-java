@@ -54,15 +54,15 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyTwentySevenTools() {
-    assertThat(tools).hasSize(27);
+  void registersExactlyTwentyNineTools() {
+    assertThat(tools).hasSize(29);
   }
 
   @Test
   void toolNamesAreCorrect() {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
-        "version", "compile_strategy", "upload_dataset", "list_datasets", "get_dataset", "get_dataset_upload",
+        "version", "compile_strategy", "upload_dataset", "import_dataset", "list_datasets", "get_dataset", "get_dataset_upload", "get_dataset_import",
         "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "download_tickers",
         "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
@@ -146,6 +146,20 @@ class McpToolsTest {
 
     assertThat(status.isError()).isNotEqualTo(Boolean.TRUE);
     assertThat(textOf(status)).contains("INGESTING").doesNotContain("http");
+  }
+
+  @Test
+  void datasetImportStartsAndCanBeRead() {
+    var imported = call("import_dataset", Map.of("name", "WETH week", "instrument", "WETH/USDC",
+        "from", "2026-08-01T00:00:00Z", "to", "2026-08-08T00:00:00Z", "network", "ethereum",
+        "protocol", "uniswap", "version", "v3", "contract", "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"));
+    String body = textOf(imported);
+    String datasetId = body.substring(body.indexOf("datasetId=") + 10, body.indexOf(" importId="));
+    String importId = body.substring(body.indexOf("importId=") + 9, body.indexOf(" ingestJobId="));
+
+    var state = call("get_dataset_import", Map.of("datasetId", datasetId, "importId", importId));
+    assertThat(state.isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(state)).contains("FETCHING");
   }
 
   // ---- list_exchanges -----------------------------------------------------

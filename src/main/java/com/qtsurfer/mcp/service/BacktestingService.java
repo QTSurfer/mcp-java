@@ -17,6 +17,8 @@ import com.qtsurfer.mcp.model.JobSummary;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.DatasetImportResult;
+import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.MarketDataDownload;
 
@@ -60,6 +62,13 @@ public interface BacktestingService {
 
   /** Retry finalization after an upload that succeeded before the MCP call failed. */
   String finalizeDatasetUpload(String datasetId, String uploadId);
+
+  /** Start an external DEX-history import. */
+  DatasetImportResult importDataset(String name, String instrument, String from, String to,
+      String network, String protocol, String version, String contract);
+
+  /** Read one external import's fetch and ingest state. */
+  Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId);
 
   /** List available exchanges on the platform. */
   List<Exchange> listExchanges();

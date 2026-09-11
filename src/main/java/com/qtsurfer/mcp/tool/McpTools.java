@@ -34,6 +34,8 @@ import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
 import com.qtsurfer.mcp.model.DatasetUploadStatus;
+import com.qtsurfer.mcp.model.DatasetImportResult;
+import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.StrategyProperty;
 import com.qtsurfer.mcp.model.JobResult;
@@ -82,9 +84,11 @@ public final class McpTools {
         version(apiUrl),
         compileStrategy(service),
         uploadDataset(service),
+        importDataset(service),
         listDatasets(service),
         getDataset(service),
         getDatasetUpload(service),
+        getDatasetImport(service),
         finalizeDatasetUpload(service),
         deleteDataset(service),
         listExchanges(service),
@@ -180,6 +184,35 @@ public final class McpTools {
     });
   }
 
+  private static SyncToolSpecification importDataset(BacktestingService service) {
+    Tool tool = Tool.builder().name("import_dataset")
+        .description("Create a dataset by fetching DEX swap history instead of uploading a file. "
+            + "The contract must identify the pool on ethereum or robinhood. Returns datasetId and importId; "
+            + "poll get_dataset_import until READY before using the dataset in a run.")
+        .inputSchema(schema(Map.of(
+            "name", prop("string", "Unique dataset name"),
+            "instrument", prop("string", "Pair symbol, e.g. WETH/USDC"),
+            "from", prop("string", "Inclusive ISO-8601 timestamp"),
+            "to", prop("string", "Exclusive ISO-8601 timestamp"),
+            "network", prop("string", "DEX network: ethereum or robinhood"),
+            "contract", prop("string", "Pool or pair contract address"),
+            "protocol", prop("string", "DEX protocol, currently uniswap"),
+            "version", prop("string", "Protocol version: v2 or v3")),
+            List.of("name", "instrument", "from", "to", "network", "contract", "protocol", "version"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        DatasetImportResult result = service.importDataset(required(args, "name"), required(args, "instrument"),
+            required(args, "from"), required(args, "to"), required(args, "network"), required(args, "protocol"),
+            required(args, "version"), required(args, "contract"));
+        return text("Dataset import accepted. datasetId=" + result.datasetId() + " importId=" + result.importId()
+            + " ingestJobId=" + result.jobId() + "\nPoll get_dataset_import with datasetId and importId.");
+      } catch (Exception e) {
+        return error("Failed to start dataset import: " + e.getMessage());
+      }
+    });
+  }
+
   private static SyncToolSpecification listDatasets(BacktestingService service) {
     Tool tool = Tool.builder().name("list_datasets")
         .description("List datasets owned by the authenticated account. A dataset becomes runnable only "
@@ -227,6 +260,25 @@ public final class McpTools {
             .map(McpTools::text).orElseGet(() -> text("Dataset upload not found."));
       } catch (Exception e) {
         return error("Failed to read dataset upload: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getDatasetImport(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_dataset_import")
+        .description("Poll the asynchronous fetch and ingest started by import_dataset. FETCHING and INGESTING "
+            + "are non-terminal; READY carries a runnable version and FAILED carries its error.")
+        .inputSchema(schema(Map.of("datasetId", prop("string", "Dataset id"),
+            "importId", prop("string", "Import id returned by import_dataset")),
+            List.of("datasetId", "importId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      String datasetId = required(request.arguments(), "datasetId");
+      String importId = required(request.arguments(), "importId");
+      try {
+        return service.getDatasetImport(datasetId, importId).map(McpTools::formatImportStatus)
+            .map(McpTools::text).orElseGet(() -> text("Dataset import not found."));
+      } catch (Exception e) {
+        return error("Failed to read dataset import: " + e.getMessage());
       }
     });
   }
@@ -281,6 +333,14 @@ public final class McpTools {
           + " | bytes=" + valueOrUnknown(upload.bytes()) + " | cadence=" + valueOrUnknown(upload.cadence())
           + " | gaps=" + valueOrUnknown(upload.gaps());
     }
+    return value;
+  }
+
+  private static String formatImportStatus(DatasetImportStatus imported) {
+    String value = "Dataset import " + imported.importId() + ": " + imported.status() + " | ingestJobId="
+        + valueOrUnknown(imported.jobId());
+    if (imported.versionId() != null) value += " | version=" + imported.versionId();
+    if (imported.error() != null) value += " | error=" + imported.error();
     return value;
   }
 

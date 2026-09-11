@@ -564,12 +564,16 @@
     "allDeclaredMethods": true,
     "allDeclaredFields": true
   },
-  {
-    "name": "com.qtsurfer.api.client.model.PrepareRequest$CadenceEnum",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportRequest$TypeEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportDexRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportDexRequest$NetworkEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportDexRequest$IdEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportDexRequest$VersionEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportCreated", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportCreated$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportState", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetImportState$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   {
     "name": "com.qtsurfer.api.client.model.ResponseError",
     "allDeclaredConstructors": true,
@@ -782,6 +786,18 @@
   },
   {
     "name": "com.qtsurfer.mcp.model.DatasetSummary",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.DatasetImportResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.mcp.model.DatasetImportStatus",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
