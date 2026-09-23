@@ -6,11 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.14.0] — 2026-09-23
+## [0.15.0] — 2026-09-23
+
+### Added ✨
+
+- `get_account` reports tier limits; `get_account_usage` reports current dataset, strategy, signal,
+  and shared-storage usage so an agent can check quota before retaining data.
+- `start_live`, `get_live`, and `stop_live` cover the run lifecycle. New runs start in `SANDBOX`;
+  `relay` stays false by default because retained signals use shared storage.
+- `list_live` browses every owned run; `list_public_live` separately browses public runs currently
+  running. Both return a `nextCursor` for opaque continuation (default page size 20, maximum 100).
+- `update_live` changes visibility/name/description; `update_live_params` queues declared
+  strategy-parameter changes; `get_live_signals` reads retained signals oldest-first with time,
+  instrument, and cursor filters.
+- Real-time WebSocket subscription and connection-token minting remain outside this request/response
+  MCP; use `get_live_signals` for retained history.
 
 ### Changed 🔄
 
-- Build against `com.qtsurfer:sdk-java` `0.24.0`.
+- Build against `com.github.QTSurfer:sdk-java` `0.25.1`, using its authenticated Account and Live API
+  surface with proactive token refresh and retry-on-401.
 
 ## [0.13.0] — 2026-09-11
 

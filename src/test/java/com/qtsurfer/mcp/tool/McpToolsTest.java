@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyTwentyNineTools() {
-    assertThat(tools).hasSize(29);
+  void registersExactlyThirtyNineTools() {
+    assertThat(tools).hasSize(39);
   }
 
   @Test
@@ -67,7 +67,42 @@ class McpToolsTest {
         "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
-        "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code");
+        "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
+        "get_account", "get_account_usage", "start_live", "get_live", "stop_live", "list_live",
+        "list_public_live", "update_live", "update_live_params", "get_live_signals");
+  }
+
+  @Test
+  void accountToolsExposeLimitsAndSharedUsage() {
+    assertThat(textOf(call("get_account", Map.of())))
+        .contains("Account tier: free", "Shared storage max bytes: 10000000");
+    assertThat(textOf(call("get_account_usage", Map.of())))
+        .contains("Current account usage", "Shared storage: 0 bytes");
+  }
+
+  @Test
+  void liveToolsCoverStartLifecycleUpdatesAndRetainedSignals() {
+    String strategyId = service.compileStrategy("public class Demo {}").strategyId();
+    String started = textOf(call("start_live", Map.of(
+        "strategyId", strategyId,
+        "exchange", "binance",
+        "segment", "spot",
+        "instruments", List.of("BTC/USDT"))));
+    assertThat(started).contains("Stage: SANDBOX", "Relay: false");
+    String runId = started.lines().findFirst().orElseThrow().substring("Live run ".length());
+
+    assertThat(textOf(call("get_live", Map.of("strategyId", strategyId))))
+        .contains(runId, "Desired: RUNNING");
+    assertThat(textOf(call("list_live", Map.of()))).contains("Owned live runs:");
+    assertThat(textOf(call("list_public_live", Map.of()))).contains("Public live runs:");
+    assertThat(textOf(call("update_live", Map.of("runId", runId, "visibility", "public"))))
+        .contains("visibility=public");
+    assertThat(textOf(call("update_live_params", Map.of(
+        "runId", runId, "params", Map.of("fastPeriod", 12))))).contains("paramsVersion=2");
+    assertThat(textOf(call("get_live_signals", Map.of("runId", runId))))
+        .contains("Retained signals (oldest first):", "None.");
+    assertThat(textOf(call("stop_live", Map.of("strategyId", strategyId))))
+        .contains("Desired: STOPPED");
   }
 
   // ---- version ------------------------------------------------------------

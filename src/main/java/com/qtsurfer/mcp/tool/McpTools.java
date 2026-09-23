@@ -6,6 +6,20 @@ import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import com.qtsurfer.mcp.McpServerRunner;
 import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.model.Account;
+import com.qtsurfer.api.client.model.AccountUsage;
+import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveRun;
+import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveSignal;
+import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.LiveSource;
+import com.qtsurfer.api.client.model.PublicLiveListResponse;
+import com.qtsurfer.api.client.model.PublicLiveRun;
+import com.qtsurfer.api.client.model.StartLiveRequest;
+import com.qtsurfer.api.client.model.UpdateLiveRequest;
+import com.qtsurfer.api.client.model.LiveRunSummary;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
@@ -44,7 +58,10 @@ import com.qtsurfer.mcp.model.MarketDataDownload;
 import com.qtsurfer.mcp.service.BacktestingService;
 
 import java.time.OffsetDateTime;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -109,7 +126,17 @@ public final class McpTools {
         validateStrategy(service),
         getStrategy(service),
         deleteStrategy(service),
-        getStrategyCode(service));
+        getStrategyCode(service),
+        getAccount(service),
+        getAccountUsage(service),
+        startLive(service),
+        getLive(service),
+        stopLive(service),
+        listLive(service),
+        listPublicLive(service),
+        updateLive(service),
+        updateLiveParams(service),
+        getLiveSignals(service));
   }
 
   // ---- datasets ------------------------------------------------------------
@@ -1407,6 +1434,296 @@ public final class McpTools {
         });
   }
 
+  private static SyncToolSpecification getAccount(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_account")
+        .description("Read your account tier and hard limits, including dataset count, per-dataset "
+            + "size, and total shared storage. Check get_account_usage for current consumption "
+            + "before retaining live signals or creating datasets.")
+        .inputSchema(emptySchema()).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Account account = service.getAccount();
+        return text("Account tier: " + account.getTier() + "\n"
+            + "Datasets max: " + account.getMaxDatasets() + "\n"
+            + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
+            + "Shared storage max bytes: " + account.getMaxTotalStorageBytes());
+      } catch (Exception e) {
+        return error("Failed to read account limits: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getAccountUsage(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_account_usage")
+        .description("Read current dataset, strategy, signal and shared-storage usage. "
+            + "Datasets, registered strategies and retained signals count toward shared storage; "
+            + "check this before enabling relay or retaining large signal histories.")
+        .inputSchema(emptySchema()).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        AccountUsage usage = service.getAccountUsage();
+        return text("Current account usage:\n"
+            + "Datasets: " + usage.getDatasetsUsed() + " (" + usage.getDatasetBytesUsed() + " bytes)\n"
+            + "Strategies: " + usage.getStrategiesUsed() + " (" + usage.getStrategyBytesUsed() + " bytes)\n"
+            + "Signals: " + usage.getSignalsUsed() + " (" + usage.getSignalBytesUsed() + " bytes)\n"
+            + "Shared storage: " + usage.getStorageBytesUsed() + " bytes");
+      } catch (Exception e) {
+        return error("Failed to read account usage: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification startLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("start_live")
+        .description("Start a registered strategy on one centralized-exchange feed. A new run "
+            + "always begins in SANDBOX for a trial before promotion to LIVE. Required: strategyId, "
+            + "exchange, segment, and instruments (array; use [\"*\"] only when account tier permits). "
+            + "type defaults to ticker; optional params must match the strategy's declared properties. "
+            + "visibility defaults to private. relay defaults to false; enable only when signals are "
+            + "needed because retained signal data consumes shared account storage. Check "
+            + "get_account_usage first. This MCP exposes request/response tools, not WebSocket subscriptions.")
+        .inputSchema(schema(mapOf(
+            "strategyId", prop("string", "Previously compiled strategy id"),
+            "exchange", prop("string", "Exchange id, e.g. binance"),
+            "segment", prop("string", "Market segment, e.g. spot"),
+            "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
+                "description", "Symbols, or [\"*\"] when account limits allow all instruments"),
+            "type", prop("string", "ticker or kline; defaults to ticker"),
+            "params", prop("object", "Optional initial strategy parameter values"),
+            "visibility", prop("string", "private (default) or public"),
+            "relay", prop("boolean", "Request signal relay; false by default and uses storage"),
+            "name", prop("string", "Optional display name"),
+            "description", prop("string", "Optional run description")),
+            List.of("strategyId", "exchange", "segment", "instruments"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        Object rawInstruments = args.get("instruments");
+        if (!(rawInstruments instanceof List<?> values) || values.isEmpty()
+            || values.stream().anyMatch(value -> !(value instanceof String))) {
+          throw new IllegalArgumentException("instruments must be a non-empty array of strings");
+        }
+        LiveSource source = new LiveSource().venueType("cx")
+            .exchange(required(args, "exchange")).segment(required(args, "segment"))
+            .type(LiveSource.TypeEnum.fromValue(optional(args, "type") == null
+                ? "ticker" : required(args, "type")))
+            .instruments(values.stream().map(String.class::cast).toList());
+        StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
+            .relay(optionalBoolean(args, "relay", false));
+        String visibility = optional(args, "visibility");
+        if (visibility != null) body.visibility(StartLiveRequest.VisibilityEnum.fromValue(visibility));
+        String name = optional(args, "name");
+        if (name != null) body.name(name);
+        String description = optional(args, "description");
+        if (description != null) body.description(description);
+        Map<String, Object> params = objectMap(args.get("params"), "params");
+        if (params != null) body.params(params);
+        LiveRun run = service.startLive(required(args, "strategyId"), body);
+        return text(formatLiveRun(run));
+      } catch (IllegalArgumentException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Failed to start live strategy: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_live")
+        .description("Read a strategy's current or most recent live run by strategyId. Poll this "
+            + "tool to observe sandbox/live/stopping state transitions.")
+        .inputSchema(schema(Map.of("strategyId", prop("string", "Registered strategy id")),
+            List.of("strategyId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        return text(formatLiveRun(service.getLive(required(request.arguments(), "strategyId"))));
+      } catch (Exception e) {
+        return error("Failed to read live run: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification stopLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("stop_live")
+        .description("Request that a strategy's live run stop. The returned desired state may "
+            + "be STOPPED while actual state is still transitioning; poll get_live to confirm.")
+        .inputSchema(schema(Map.of("strategyId", prop("string", "Registered strategy id")),
+            List.of("strategyId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        return text(formatLiveRun(service.stopLive(required(request.arguments(), "strategyId"))));
+      } catch (Exception e) {
+        return error("Failed to stop live run: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification listLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("list_live")
+        .description("List all live runs owned by your account, including sandbox and stopped runs. "
+            + "cursor is an opaque continuation value from the previous result; limit defaults to "
+            + "20 and the API caps it at 100. This is distinct from list_public_live.")
+        .inputSchema(schema(mapOf("cursor", prop("string", "Opaque cursor from nextCursor"),
+            "limit", prop("integer", "Page size; default 20, maximum 100")), List.of())).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        int limit = Math.min(100, Math.max(1, asInt(args.get("limit"), 20)));
+        LiveListResponse page = service.listLive(optional(args, "cursor"), limit);
+        StringBuilder result = new StringBuilder("Owned live runs:\n");
+        if (page.getRuns().isEmpty()) result.append("None.\n");
+        for (LiveRunSummary run : page.getRuns()) {
+          result.append("- runId=").append(run.getRunId()).append(" strategyId=")
+              .append(run.getStrategyId()).append(" stage=").append(run.getStage())
+              .append(" state=").append(run.getState()).append(" desired=")
+              .append(run.getDesired()).append('\n');
+        }
+        appendNextCursor(result, page.getLinks() == null || page.getLinks().getNext() == null
+            ? null : page.getLinks().getNext().getHref());
+        return text(result.toString().stripTrailing());
+      } catch (Exception e) {
+        return error("Failed to list owned live runs: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification listPublicLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("list_public_live")
+        .description("Browse public runs that are currently live and running. Public results omit "
+            + "owner and strategy identity. cursor is opaque; limit defaults to 20 and is capped at "
+            + "100. This is distinct from list_live, which lists every run you own.")
+        .inputSchema(schema(mapOf("cursor", prop("string", "Opaque cursor from nextCursor"),
+            "limit", prop("integer", "Page size; default 20, maximum 100")), List.of())).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        int limit = Math.min(100, Math.max(1, asInt(args.get("limit"), 20)));
+        PublicLiveListResponse page = service.listPublicLive(optional(args, "cursor"), limit);
+        StringBuilder result = new StringBuilder("Public live runs:\n");
+        if (page.getRuns().isEmpty()) result.append("None.\n");
+        for (PublicLiveRun run : page.getRuns()) {
+          result.append("- runId=").append(run.getRunId()).append(" name=")
+              .append(run.getName()).append(" state=").append(run.getState()).append('\n');
+        }
+        appendNextCursor(result, page.getLinks() == null || page.getLinks().getNext() == null
+            ? null : page.getLinks().getNext().getHref());
+        return text(result.toString().stripTrailing());
+      } catch (Exception e) {
+        return error("Failed to list public live runs: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification updateLive(BacktestingService service) {
+    Tool tool = Tool.builder().name("update_live")
+        .description("Update a live run's public/private visibility, display name, or description. "
+            + "Supply at least one field. Making a run public allows others to see it in "
+            + "list_public_live and subscribe to its signal channel.")
+        .inputSchema(schema(mapOf("runId", prop("string", "Live run id"),
+            "visibility", prop("string", "private or public"), "name", prop("string", "New display name"),
+            "description", prop("string", "New description")), List.of("runId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        UpdateLiveRequest body = new UpdateLiveRequest();
+        boolean changed = false;
+        String visibility = optional(args, "visibility");
+        if (visibility != null) { body.visibility(UpdateLiveRequest.VisibilityEnum.fromValue(visibility)); changed = true; }
+        String name = optional(args, "name");
+        if (name != null) { body.name(name); changed = true; }
+        String description = optional(args, "description");
+        if (description != null) { body.description(description); changed = true; }
+        if (!changed) throw new IllegalArgumentException("supply visibility, name, or description");
+        LiveRunCompact run = service.updateLive(required(args, "runId"), body);
+        return text("Updated live run " + run.getRunId() + " visibility=" + run.getVisibility()
+            + " name=" + run.getName());
+      } catch (Exception e) {
+        return error("Failed to update live run: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification updateLiveParams(BacktestingService service) {
+    Tool tool = Tool.builder().name("update_live_params")
+        .description("Update active strategy parameters for a live run. params must be a non-empty "
+            + "object containing only properties declared by the strategy; the update takes effect "
+            + "at the next event boundary. This does not start or stop the run.")
+        .inputSchema(schema(Map.of("runId", prop("string", "Live run id"),
+            "params", prop("object", "Non-empty map of declared strategy property names to values")),
+            List.of("runId", "params"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> params = objectMap(request.arguments().get("params"), "params");
+        if (params == null || params.isEmpty()) throw new IllegalArgumentException("params must not be empty");
+        LiveParamsUpdateResult update = service.updateLiveParams(
+            required(request.arguments(), "runId"), params);
+        return text("Parameters queued for run " + update.getRunId() + "; paramsVersion="
+            + update.getParamsVersion() + ", effectiveAtMs=" + update.getEffectiveAtMs());
+      } catch (Exception e) {
+        return error("Failed to update live parameters: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getLiveSignals(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_live_signals")
+        .description("Read retained signals oldest-first. Omit cursor for the first page; when "
+            + "nextCursor is returned, pass it unchanged to fetch the next page. cursor takes "
+            + "precedence over sinceMs. Use sinceMs for an initial time-based read and optionally "
+            + "filter by instrument. Retention advances; if a cursor expires, restart from the "
+            + "availableSinceMs reported by the API. Signal relay must have been enabled on the run.")
+        .inputSchema(schema(mapOf("runId", prop("string", "Live run id"),
+            "sinceMs", prop("integer", "Initial inclusive event timestamp in epoch milliseconds"),
+            "instrument", prop("string", "Optional instrument filter"),
+            "cursor", prop("string", "Opaque continuation cursor; takes precedence over sinceMs"),
+            "limit", prop("integer", "Page size; API default applies when omitted")), List.of("runId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        Integer limit = parseOptionalInteger(args.get("limit"), "limit");
+        if (limit != null) limit = Math.min(100, Math.max(1, limit));
+        LiveSignalPage page = service.getLiveSignals(required(args, "runId"),
+            asLong(args.get("sinceMs")), optional(args, "instrument"), optional(args, "cursor"),
+            limit);
+        StringBuilder result = new StringBuilder("Retained signals (oldest first):\n");
+        if (page.getSignals().isEmpty()) result.append("None.\n");
+        for (LiveSignal signal : page.getSignals()) {
+          result.append("- signalId=").append(signal.getSignalId()).append(" eventTsMs=")
+              .append(signal.getEventTsMs()).append(" type=").append(signal.getType())
+              .append(" kind=").append(signal.getKind()).append(" instrument=")
+              .append(signal.getInstrument() == null ? "unknown" : signal.getInstrument().getSymbol())
+              .append(" data=").append(signal.getData()).append('\n');
+        }
+        if (page.getAvailableSinceMs() != null) {
+          result.append("availableSinceMs=").append(page.getAvailableSinceMs()).append('\n');
+        }
+        appendNextCursor(result, page.getLinks() == null || page.getLinks().getNext() == null
+            ? null : page.getLinks().getNext().getHref());
+        return text(result.toString().stripTrailing());
+      } catch (Exception e) {
+        return error("Failed to read retained signals: " + e.getMessage());
+      }
+    });
+  }
+
+  private static String formatLiveRun(LiveRun run) {
+    return "Live run " + run.getRunId() + "\nStrategy: " + run.getStrategyId()
+        + "\nStage: " + run.getStage() + "\nState: " + run.getState()
+        + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
+        + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
+        + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
+  }
+
+  private static void appendNextCursor(StringBuilder result, String href) {
+    if (href != null) {
+      String cursor = Arrays.stream(href.split("[?&]"))
+          .filter(part -> part.startsWith("cursor="))
+          .map(part -> URLDecoder.decode(part.substring("cursor=".length()), StandardCharsets.UTF_8))
+          .findFirst().orElse(null);
+      if (cursor != null) result.append("nextCursor=").append(cursor).append('\n');
+    }
+  }
+
   // ---- sweep argument parsing ---------------------------------------------
 
   private static Map<String, ParamAxis> parseParams(Object raw) {
@@ -1725,6 +2042,26 @@ public final class McpTools {
   private static int asInt(Object v, int defaultValue) {
     Integer parsed = asInteger(v);
     return parsed == null ? defaultValue : parsed;
+  }
+
+  private static Long asLong(Object v) {
+    if (v == null) return null;
+    if (v instanceof Number n) return n.longValue();
+    try {
+      return Long.valueOf(v.toString().trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Expected an integer value, got: " + v);
+    }
+  }
+
+  private static Integer parseOptionalInteger(Object value, String argument) {
+    if (value == null) return null;
+    if (value instanceof Number number) return number.intValue();
+    try {
+      return Integer.valueOf(value.toString().trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Argument '" + argument + "' must be an integer");
+    }
   }
 
   /** Parse an optional integer argument; {@code null} when absent or unparseable. */

@@ -20,6 +20,16 @@ import com.qtsurfer.api.client.model.JobState;
 import com.qtsurfer.api.client.model.ResultMap;
 import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.StrategyState;
+import com.qtsurfer.api.client.model.Account;
+import com.qtsurfer.api.client.model.AccountUsage;
+import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveRun;
+import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.PublicLiveListResponse;
+import com.qtsurfer.api.client.model.StartLiveRequest;
+import com.qtsurfer.api.client.model.UpdateLiveRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
@@ -31,6 +41,7 @@ import com.qtsurfer.api.sdk.Sweep;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepOptions;
 import com.qtsurfer.api.sdk.SweepRequest;
+import com.qtsurfer.api.sdk.UpdateLiveParamsRequestBuilder;
 import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.mcp.model.EquityPoint;
@@ -97,6 +108,57 @@ public class SdkBacktestingService implements BacktestingService {
   private final UploadRoot downloadRoot;
   private final Map<String, SessionJob> jobs = new ConcurrentHashMap<>();
   private final Map<String, SessionSweep> sweeps = new ConcurrentHashMap<>();
+
+  @Override
+  public Account getAccount() {
+    return qts.getAccount();
+  }
+
+  @Override
+  public AccountUsage getAccountUsage() {
+    return qts.getAccountUsage();
+  }
+
+  @Override
+  public LiveRun startLive(String strategyId, StartLiveRequest request) {
+    return qts.startLive(strategyId, request);
+  }
+
+  @Override
+  public LiveRun getLive(String strategyId) {
+    return qts.getLive(strategyId);
+  }
+
+  @Override
+  public LiveRun stopLive(String strategyId) {
+    return qts.stopLive(strategyId);
+  }
+
+  @Override
+  public LiveListResponse listLive(String cursor, Integer limit) {
+    return qts.listLive(cursor, limit);
+  }
+
+  @Override
+  public PublicLiveListResponse listPublicLive(String cursor, Integer limit) {
+    return qts.listPublicLive(cursor, limit);
+  }
+
+  @Override
+  public LiveRunCompact updateLive(String runId, UpdateLiveRequest request) {
+    return qts.updateLive(runId, request);
+  }
+
+  @Override
+  public LiveParamsUpdateResult updateLiveParams(String runId, Map<String, Object> params) {
+    return qts.updateLiveParams(runId, UpdateLiveParamsRequestBuilder.builder().params(params));
+  }
+
+  @Override
+  public LiveSignalPage getLiveSignals(
+      String runId, Long sinceMs, String instrument, String cursor, Integer limit) {
+    return qts.getLiveSignals(runId, sinceMs, instrument, cursor, limit);
+  }
 
   /** Internal record tracking a submitted job. */
   private record SessionJob(

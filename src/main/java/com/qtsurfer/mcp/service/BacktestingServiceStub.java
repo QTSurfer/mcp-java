@@ -12,6 +12,16 @@ import com.qtsurfer.api.client.model.SweepProgress;
 import com.qtsurfer.api.client.model.SweepRunRow;
 import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.StrategyState;
+import com.qtsurfer.api.client.model.Account;
+import com.qtsurfer.api.client.model.AccountUsage;
+import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveRun;
+import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.PublicLiveListResponse;
+import com.qtsurfer.api.client.model.StartLiveRequest;
+import com.qtsurfer.api.client.model.UpdateLiveRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardFold;
 import com.qtsurfer.api.client.model.WalkForwardResult;
@@ -68,6 +78,83 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, DatasetSummary> datasets = new ConcurrentHashMap<>();
   private final Map<String, DatasetUploadStatus> uploads = new ConcurrentHashMap<>();
   private final Map<String, DatasetImportStatus> imports = new ConcurrentHashMap<>();
+  private final Map<String, LiveRun> liveRuns = new ConcurrentHashMap<>();
+
+  @Override
+  public Account getAccount() {
+    return new Account().userId("stub-user").tier("free")
+        .maxDatasets(10).maxDatasetBytes(1_000_000L).maxTotalStorageBytes(10_000_000L);
+  }
+
+  @Override
+  public AccountUsage getAccountUsage() {
+    return new AccountUsage().datasetsUsed(datasets.size()).datasetBytesUsed(0L)
+        .signalsUsed(0).signalBytesUsed(0L).strategiesUsed(strategies.size())
+        .strategyBytesUsed(0L).storageBytesUsed(0L);
+  }
+
+  @Override
+  public LiveRun startLive(String strategyId, StartLiveRequest request) {
+    if (!strategies.containsKey(strategyId)) throw new IllegalArgumentException("No such strategy: " + strategyId);
+    String runId = "live-" + UUID.randomUUID().toString().substring(0, 8);
+    LiveRun run = new LiveRun().strategyId(strategyId).runId(runId)
+        .visibility(LiveRun.VisibilityEnum.PRIVATE).stage(LiveRun.StageEnum.SANDBOX)
+        .state("STARTING").desired(LiveRun.DesiredEnum.RUNNING)
+        .sources(request.getSources()).params(request.getParams() == null ? Map.of() : request.getParams())
+        .paramsVersion(1).relay(Boolean.TRUE.equals(request.getRelay())).startedAtMs(System.currentTimeMillis());
+    liveRuns.put(strategyId, run);
+    return run;
+  }
+
+  @Override
+  public LiveRun getLive(String strategyId) {
+    LiveRun run = liveRuns.get(strategyId);
+    if (run == null) throw new IllegalArgumentException("No live run for strategy: " + strategyId);
+    return run;
+  }
+
+  @Override
+  public LiveRun stopLive(String strategyId) {
+    return getLive(strategyId).desired(LiveRun.DesiredEnum.STOPPED).state("STOPPING");
+  }
+
+  @Override
+  public LiveListResponse listLive(String cursor, Integer limit) {
+    return new LiveListResponse().runs(List.of());
+  }
+
+  @Override
+  public PublicLiveListResponse listPublicLive(String cursor, Integer limit) {
+    return new PublicLiveListResponse().runs(List.of());
+  }
+
+  @Override
+  public LiveRunCompact updateLive(String runId, UpdateLiveRequest request) {
+    LiveRun run = liveRuns.values().stream().filter(candidate -> runId.equals(candidate.getRunId()))
+        .findFirst().orElseThrow(() -> new IllegalArgumentException("No live run: " + runId));
+    if (request.getName() != null) run.name(request.getName());
+    if (request.getDescription() != null) run.description(request.getDescription());
+    if (request.getVisibility() != null) run.visibility(LiveRun.VisibilityEnum.valueOf(request.getVisibility().name()));
+    return new LiveRunCompact().runId(runId).name(run.getName()).description(run.getDescription())
+        .visibility(LiveRunCompact.VisibilityEnum.valueOf(run.getVisibility().name()))
+        .stage(LiveRunCompact.StageEnum.valueOf(run.getStage().name())).state(run.getState())
+        .sources(run.getSources());
+  }
+
+  @Override
+  public LiveParamsUpdateResult updateLiveParams(String runId, Map<String, Object> params) {
+    LiveRun run = liveRuns.values().stream().filter(candidate -> runId.equals(candidate.getRunId()))
+        .findFirst().orElseThrow(() -> new IllegalArgumentException("No live run: " + runId));
+    run.params(params).paramsVersion(run.getParamsVersion() + 1);
+    return new LiveParamsUpdateResult().runId(runId).paramsVersion(run.getParamsVersion())
+        .effectiveAtMs(System.currentTimeMillis());
+  }
+
+  @Override
+  public LiveSignalPage getLiveSignals(
+      String runId, Long sinceMs, String instrument, String cursor, Integer limit) {
+    return new LiveSignalPage().signals(List.of());
+  }
 
   // ---- datasets -------------------------------------------------------------
 

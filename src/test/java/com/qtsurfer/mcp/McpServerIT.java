@@ -38,8 +38,8 @@ class McpServerIT {
   }
 
   @Test
-  void registersExactlyTwentyNineTools() {
-    assertThat(runner.getServer().listTools()).hasSize(29);
+  void registersExactlyThirtyNineTools() {
+    assertThat(runner.getServer().listTools()).hasSize(39);
   }
 
   @Test
@@ -51,7 +51,9 @@ class McpServerIT {
         "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
-        "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code");
+        "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
+        "get_account", "get_account_usage", "start_live", "get_live", "stop_live", "list_live",
+        "list_public_live", "update_live", "update_live_params", "get_live_signals");
   }
 
   @Test

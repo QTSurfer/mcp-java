@@ -4,11 +4,11 @@
   <a href="https://github.com/QTSurfer/mcp-java/actions/workflows/ci.yml"><img src="https://github.com/QTSurfer/mcp-java/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/QTSurfer/mcp-java/releases/latest"><img src="https://img.shields.io/github/v/release/QTSurfer/mcp-java" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/JDK-21%2B-blue?logo=openjdk&logoColor=white" alt="JDK 21+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/QTSurfer/mcp-java/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
 <p align="center">
-  <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server for <a href="https://qtsurfer.com">QTSurfer</a> — exposes backtesting and market data as AI-accessible tools over stdio JSON-RPC 2.0.
+  <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server for <a href="https://qtsurfer.com">QTSurfer</a> — exposes account, live trading, backtesting and market data as AI-accessible tools over stdio JSON-RPC 2.0.
 </p>
 
 ---
@@ -20,7 +20,7 @@ Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, ex
 - **Fat JAR fallback** — single file, runs anywhere with JDK 21+.
 - **Docker** — `docker run -i` for containerised deployments (`eclipse-temurin:21-jre-alpine`, ~230 MB).
 - **Long-lived API key, refresh handled for you** — drop `QTSURFER_APIKEY` once in your MCP client config; `sdk-java` exchanges it for a JWT on startup and refreshes transparently for the lifetime of the process.
-- **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — auth, compile → prepare → execute orchestration with retry and cancellation.
+- **Backed by [`com.github.QTSurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — authenticated account, live execution, compile → prepare → execute orchestration, retry and cancellation.
 
 ## Installation
 
@@ -183,6 +183,66 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_strategies` | List every strategy registered under this account, most recently compiled first |
 | `delete_strategy` | Release a registered strategy |
 | `get_strategy_code` | Fetch the exact source last registered for a strategy id |
+| `get_account` / `get_account_usage` | Read account tier limits and current dataset, strategy, signal and shared-storage usage |
+| `start_live` / `get_live` / `stop_live` | Start a strategy's live run, inspect sandbox/live state, and request it to stop |
+| `list_live` / `list_public_live` | Page through all your own runs or browse currently-running public runs separately |
+| `update_live` / `update_live_params` | Change run visibility/metadata or queue updates to declared strategy parameters |
+| `get_live_signals` | Read retained signals oldest-first with optional time/instrument filters and cursor pagination |
+
+### Account and storage
+
+Use `get_account` for tier caps and `get_account_usage` for current consumption before workflows
+that retain data. Dataset bytes, strategy bytes, and retained signal bytes share the account's
+storage quota. Live signal relay is **off by default**; request it only when a downstream consumer
+needs the retained signal history, and check usage again before enabling it for many runs.
+
+```json
+{}
+```
+
+The empty argument object above is the input to either account tool.
+
+### Live execution
+
+Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, `segment`, and
+`instruments` (a non-empty symbol array). The server starts every run in `SANDBOX`; inspect it with
+`get_live` and poll until its state changes. Optional inputs are `type` (`ticker` by default, or
+`kline`), initial `params`, `visibility` (`private` by default), `name`, `description`, and `relay`
+(`false` by default). The only supported venue type is centralized exchange (`cx`). `instruments`
+may be `['*']` only if the account tier allows every instrument. `stop_live` takes `strategyId` and
+returns the desired stop state; poll `get_live` until actual state settles.
+
+Use `list_live` for all owned runs (including sandbox/stopped); `list_public_live` is a different
+catalog containing only public runs currently running and never exposes their owner/strategy.
+Both accept optional `cursor` and `limit` (default 20, API maximum 100); pass `nextCursor` back
+unchanged to fetch the next page.
+
+`update_live` takes `runId` plus at least one of `visibility`, `name`, or `description`.
+`update_live_params` takes `runId` and a non-empty `params` object containing only declared strategy
+properties; changes take effect at an event boundary. `get_live_signals` accepts `runId`, optional
+`sinceMs`, `instrument`, opaque `cursor`, and `limit`; cursor takes precedence over `sinceMs`. Read
+oldest-first, pass returned `nextCursor` unchanged, and if retention expires a cursor, restart from
+the reported `availableSinceMs` (deduplicate `signalId` if combining with another signal feed).
+
+Example tool arguments:
+
+```json
+{
+  "strategyId": "strategy-123",
+  "exchange": "binance",
+  "segment": "spot",
+  "instruments": ["ETH/USDT"],
+  "params": {"emaFast": 12},
+  "relay": false
+}
+```
+
+Pass those arguments to `start_live`; then poll `get_live` with `strategyId`. To read history,
+call `get_live_signals` with `{ "runId": "run-123", "instrument": "ETH/USDT", "limit": 100 }`;
+continue by passing its returned `nextCursor` unchanged as `cursor`.
+
+This stdio request/response MCP does not open a WebSocket or mint a connection token. Use a direct
+WebSocket client for real-time signal subscriptions; use `get_live_signals` here for retained history.
 
 ### Datasets and local files
 

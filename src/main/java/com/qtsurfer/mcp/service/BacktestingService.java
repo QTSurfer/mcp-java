@@ -6,6 +6,16 @@ import com.qtsurfer.api.client.model.ExecuteSweepResult;
 import com.qtsurfer.api.client.model.InstrumentDetail;
 import com.qtsurfer.api.client.model.StrategySummary;
 import com.qtsurfer.api.client.model.StrategyState;
+import com.qtsurfer.api.client.model.Account;
+import com.qtsurfer.api.client.model.AccountUsage;
+import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveRun;
+import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.PublicLiveListResponse;
+import com.qtsurfer.api.client.model.StartLiveRequest;
+import com.qtsurfer.api.client.model.UpdateLiveRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.ValidationOutcome;
@@ -23,6 +33,7 @@ import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.MarketDataDownload;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -249,4 +260,25 @@ public interface BacktestingService {
    *         error
    */
   String getStrategyCode(String strategyId);
+
+  Account getAccount();
+
+  AccountUsage getAccountUsage();
+
+  LiveRun startLive(String strategyId, StartLiveRequest request);
+
+  LiveRun getLive(String strategyId);
+
+  LiveRun stopLive(String strategyId);
+
+  LiveListResponse listLive(String cursor, Integer limit);
+
+  PublicLiveListResponse listPublicLive(String cursor, Integer limit);
+
+  LiveRunCompact updateLive(String runId, UpdateLiveRequest request);
+
+  LiveParamsUpdateResult updateLiveParams(String runId, Map<String, Object> params);
+
+  LiveSignalPage getLiveSignals(String runId, Long sinceMs, String instrument,
+      String cursor, Integer limit);
 }
