@@ -9,4 +9,5 @@ public record DatasetSummary(
     String from,
     String to,
     String cadence,
-    String dataFormat) {}
+    String dataFormat,
+    String deletedAt) {}

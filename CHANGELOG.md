@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-09-30
+
+### Added ✨
+
+- `send_live_command` delivers a transient command to an owned live run without restarting it. It explains handler requirements, non-persistence, accepted-versus-completed semantics, and safe retry limits.
+- `list_strategies` and `list_datasets` can include deleted entries for catalogue reconciliation; `get_account` reports the Cartesian sweep limit.
+
+### Changed 🔄
+
+- Build against `com.github.QTSurfer:sdk-java` `0.27.0`, which supplies the refreshed API client and live-command helper.
+
 ## [0.15.0] — 2026-09-23
 
 ### Added ✨

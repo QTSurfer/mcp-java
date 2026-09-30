@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyThirtyNineTools() {
-    assertThat(tools).hasSize(39);
+  void registersExactlyFortyTools() {
+    assertThat(tools).hasSize(40);
   }
 
   @Test
@@ -69,13 +69,14 @@ class McpToolsTest {
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
         "get_account", "get_account_usage", "start_live", "get_live", "stop_live", "list_live",
-        "list_public_live", "update_live", "update_live_params", "get_live_signals");
+        "list_public_live", "update_live", "update_live_params", "send_live_command", "get_live_signals");
   }
 
   @Test
   void accountToolsExposeLimitsAndSharedUsage() {
     assertThat(textOf(call("get_account", Map.of())))
-        .contains("Account tier: free", "Shared storage max bytes: 10000000");
+        .contains("Account tier: free", "Shared storage max bytes: 10000000",
+            "Maximum Cartesian sweep combinations: 10000");
     assertThat(textOf(call("get_account_usage", Map.of())))
         .contains("Current account usage", "Shared storage: 0 bytes");
   }
@@ -99,6 +100,11 @@ class McpToolsTest {
         .contains("visibility=public");
     assertThat(textOf(call("update_live_params", Map.of(
         "runId", runId, "params", Map.of("fastPeriod", 12))))).contains("paramsVersion=2");
+    assertThat(textOf(call("send_live_command", Map.of(
+        "runId", runId,
+        "command", "rebalance",
+        "properties", Map.of("targetWeight", 0.25)))))
+        .contains("Command accepted", "commandId=cmd-stub", "effectiveAtMs=");
     assertThat(textOf(call("get_live_signals", Map.of("runId", runId))))
         .contains("Retained signals (oldest first):", "None.");
     assertThat(textOf(call("stop_live", Map.of("strategyId", strategyId))))

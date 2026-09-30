@@ -36,6 +36,24 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.LivePaperConfig",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LivePaperConfig$FeeLegEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LivePaperConfig$OutputEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.UpdateLiveRequest",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -54,6 +72,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.SendLiveCommandRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.LiveListResponse",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -61,6 +85,12 @@
   },
   {
     "name": "com.qtsurfer.api.client.model.LiveParamsUpdateResult",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveCommandResult",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true

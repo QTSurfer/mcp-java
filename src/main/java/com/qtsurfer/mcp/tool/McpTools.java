@@ -10,6 +10,7 @@ import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
 import com.qtsurfer.api.client.model.LiveSignal;
@@ -43,6 +44,7 @@ import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.SweepSampler;
 import com.qtsurfer.api.sdk.WalkForwardSpec;
+import com.qtsurfer.api.sdk.LiveCommandRequestBuilder;
 import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
@@ -136,6 +138,7 @@ public final class McpTools {
         listPublicLive(service),
         updateLive(service),
         updateLiveParams(service),
+        sendLiveCommand(service),
         getLiveSignals(service));
   }
 
@@ -243,11 +246,14 @@ public final class McpTools {
   private static SyncToolSpecification listDatasets(BacktestingService service) {
     Tool tool = Tool.builder().name("list_datasets")
         .description("List datasets owned by the authenticated account. A dataset becomes runnable only "
-            + "after get_dataset_upload reports READY with a version.")
-        .inputSchema(emptySchema()).build();
+            + "after get_dataset_upload reports READY with a version. Set includeDeleted=true to also "
+            + "include deleted datasets marked with deletedAt for local catalogue reconciliation.")
+        .inputSchema(schema(Map.of("includeDeleted",
+            prop("boolean", "Also include deleted datasets; defaults to false")), List.of())).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
-        List<DatasetSummary> datasets = service.listDatasets();
+        boolean includeDeleted = optionalBoolean(request.arguments(), "includeDeleted", false);
+        List<DatasetSummary> datasets = service.listDatasets(includeDeleted);
         if (datasets.isEmpty()) return text("No datasets found for this account.");
         return text(datasets.stream().map(McpTools::formatDataset).collect(java.util.stream.Collectors.joining("\n")));
       } catch (Exception e) {
@@ -349,7 +355,8 @@ public final class McpTools {
     return "Dataset " + dataset.datasetId() + ": " + dataset.name() + " | instrument=" + dataset.instrument()
         + " | currentVersion=" + valueOrUnknown(dataset.currentVersionId()) + " | range="
         + valueOrUnknown(dataset.from()) + " → " + valueOrUnknown(dataset.to()) + " | cadence="
-        + valueOrUnknown(dataset.cadence()) + " | dataFormat=" + valueOrUnknown(dataset.dataFormat());
+        + valueOrUnknown(dataset.cadence()) + " | dataFormat=" + valueOrUnknown(dataset.dataFormat())
+        + (dataset.deletedAt() == null ? "" : " | deletedAt=" + dataset.deletedAt());
   }
 
   private static String formatUploadStatus(DatasetUploadStatus upload) {
@@ -1280,18 +1287,22 @@ public final class McpTools {
             + "strategies compiled through any client, not just this session's submit_backtest "
             + "calls. Omits validation state to stay cheap regardless of how many are registered. "
             + "Use the returned strategyId with delete_strategy or get_strategy_code. "
-            + "An empty list means the account has none registered — not an error.")
-        .inputSchema(emptySchema())
+            + "An empty list means the account has none registered — not an error. Set includeDeleted=true "
+            + "to include deleted entries marked with deletedAt for local catalogue reconciliation.")
+        .inputSchema(schema(Map.of("includeDeleted",
+            prop("boolean", "Also include deleted strategies; defaults to false")), List.of()))
         .build();
     return new SyncToolSpecification(tool,
         (exchange, request) -> {
           try {
-            List<StrategySummary> strategies = service.listStrategies();
+            boolean includeDeleted = optionalBoolean(request.arguments(), "includeDeleted", false);
+            List<StrategySummary> strategies = service.listStrategies(includeDeleted);
             if (strategies.isEmpty()) return text("No registered strategies.");
             StringBuilder sb = new StringBuilder(
                 "Registered strategies (" + strategies.size() + "):\n");
             strategies.forEach(s -> {
               sb.append("- ").append(s.getStrategyId());
+              if (s.getDeletedAt() != null) sb.append("  deleted ").append(s.getDeletedAt());
               if (s.getCompiledAt() != null) {
                 sb.append("  compiled ").append(s.getCompiledAt());
               }
@@ -1437,7 +1448,7 @@ public final class McpTools {
   private static SyncToolSpecification getAccount(BacktestingService service) {
     Tool tool = Tool.builder().name("get_account")
         .description("Read your account tier and hard limits, including dataset count, per-dataset "
-            + "size, and total shared storage. Check get_account_usage for current consumption "
+            + "size, Cartesian sweep combinations, and total shared storage. Check get_account_usage for current consumption "
             + "before retaining live signals or creating datasets.")
         .inputSchema(emptySchema()).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
@@ -1446,6 +1457,7 @@ public final class McpTools {
         return text("Account tier: " + account.getTier() + "\n"
             + "Datasets max: " + account.getMaxDatasets() + "\n"
             + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
+            + "Maximum Cartesian sweep combinations: " + account.getMaxSweepCartesian() + "\n"
             + "Shared storage max bytes: " + account.getMaxTotalStorageBytes());
       } catch (Exception e) {
         return error("Failed to read account limits: " + e.getMessage());
@@ -1661,6 +1673,35 @@ public final class McpTools {
             + update.getParamsVersion() + ", effectiveAtMs=" + update.getEffectiveAtMs());
       } catch (Exception e) {
         return error("Failed to update live parameters: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification sendLiveCommand(BacktestingService service) {
+    Tool tool = Tool.builder().name("send_live_command")
+        .description("Send a transient command to a running strategy without restarting it. The caller "
+            + "must own the run and the compiled strategy must implement CommandRequestHandler. "
+            + "Commands are not persisted or replayed to later replicas; use update_live_params for "
+            + "state that must survive restarts. A 503 means the command was not sent and may be retried. "
+            + "There is no idempotency key, so do not blindly retry an ambiguous network failure. "
+            + "The accepted response is not confirmation that the strategy finished handling it.")
+        .inputSchema(schema(Map.of(
+            "runId", prop("string", "Owned live run id"),
+            "command", prop("string", "Non-blank command text handled by the strategy"),
+            "properties", prop("object", "Optional arbitrary JSON object delivered alongside the command")),
+            List.of("runId", "command"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        Map<String, Object> properties = objectMap(args.get("properties"), "properties");
+        LiveCommandRequestBuilder builder = LiveCommandRequestBuilder.builder()
+            .command(required(args, "command"));
+        if (properties != null) builder.properties(properties);
+        LiveCommandResult accepted = service.sendLiveCommand(required(args, "runId"), builder.build());
+        return text("Command accepted for run " + accepted.getRunId() + "; commandId="
+            + accepted.getCommandId() + ", effectiveAtMs=" + accepted.getEffectiveAtMs());
+      } catch (Exception e) {
+        return error("Failed to send live command: " + e.getMessage());
       }
     });
   }

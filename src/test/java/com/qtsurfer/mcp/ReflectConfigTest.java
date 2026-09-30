@@ -88,6 +88,7 @@ class ReflectConfigTest {
       MODEL + "UpdateLiveRequest",
       MODEL + "UpdateLiveRequest$VisibilityEnum",
       MODEL + "UpdateLiveParamsRequest",
+      MODEL + "SendLiveCommandRequest",
       MODEL + "ExecuteSweepRequest",
       MODEL + "SweepSpecRequest",
       MODEL + "SweepSpecRequest$ObjectiveEnum",

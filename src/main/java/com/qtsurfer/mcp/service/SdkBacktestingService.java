@@ -24,12 +24,14 @@ import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
+import com.qtsurfer.api.client.model.SendLiveCommandRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
@@ -155,6 +157,11 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
+  public LiveCommandResult sendLiveCommand(String runId, SendLiveCommandRequest request) {
+    return qts.sendLiveCommand(runId, request);
+  }
+
+  @Override
   public LiveSignalPage getLiveSignals(
       String runId, Long sinceMs, String instrument, String cursor, Integer limit) {
     return qts.getLiveSignals(runId, sinceMs, instrument, cursor, limit);
@@ -221,8 +228,8 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
-  public List<DatasetSummary> listDatasets() {
-    return qts.getDatasets().stream().map(SdkBacktestingService::datasetSummary).toList();
+  public List<DatasetSummary> listDatasets(boolean includeDeleted) {
+    return qts.getDatasets(includeDeleted).stream().map(SdkBacktestingService::datasetSummary).toList();
   }
 
   @Override
@@ -322,13 +329,13 @@ public class SdkBacktestingService implements BacktestingService {
   private static DatasetSummary datasetSummary(Dataset dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence(), null);
+        dataset.getCadence(), null, stringify(dataset.getDeletedAt()));
   }
 
   private static DatasetSummary datasetSummary(DatasetWithLinks dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence(), stringify(dataset.getDataFormat()));
+        dataset.getCadence(), stringify(dataset.getDataFormat()), stringify(dataset.getDeletedAt()));
   }
 
   private static DatasetUploadStatus uploadStatus(String datasetId, DatasetUploadState state) {
@@ -640,8 +647,8 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
-  public List<StrategySummary> listStrategies() {
-    return qts.getStrategies();
+  public List<StrategySummary> listStrategies(boolean includeDeleted) {
+    return qts.getStrategies(includeDeleted);
   }
 
   @Override

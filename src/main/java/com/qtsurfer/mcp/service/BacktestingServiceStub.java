@@ -16,12 +16,14 @@ import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
+import com.qtsurfer.api.client.model.SendLiveCommandRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.client.model.WalkForwardFold;
 import com.qtsurfer.api.client.model.WalkForwardResult;
@@ -83,7 +85,8 @@ public class BacktestingServiceStub implements BacktestingService {
   @Override
   public Account getAccount() {
     return new Account().userId("stub-user").tier("free")
-        .maxDatasets(10).maxDatasetBytes(1_000_000L).maxTotalStorageBytes(10_000_000L);
+        .maxDatasets(10).maxDatasetBytes(1_000_000L).maxTotalStorageBytes(10_000_000L)
+        .maxSweepCartesian(10_000);
   }
 
   @Override
@@ -151,6 +154,15 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
+  public LiveCommandResult sendLiveCommand(String runId, SendLiveCommandRequest request) {
+    if (liveRuns.values().stream().noneMatch(candidate -> runId.equals(candidate.getRunId()))) {
+      throw new IllegalArgumentException("No live run: " + runId);
+    }
+    return new LiveCommandResult().runId(runId).commandId("cmd-stub")
+        .effectiveAtMs(System.currentTimeMillis());
+  }
+
+  @Override
   public LiveSignalPage getLiveSignals(
       String runId, Long sinceMs, String instrument, String cursor, Integer limit) {
     return new LiveSignalPage().signals(List.of());
@@ -171,7 +183,7 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
-  public List<DatasetSummary> listDatasets() {
+  public List<DatasetSummary> listDatasets(boolean includeDeleted) {
     return new ArrayList<>(datasets.values());
   }
 
@@ -197,7 +209,7 @@ public class BacktestingServiceStub implements BacktestingService {
       }
       targetDatasetId = "ds-" + UUID.randomUUID().toString().substring(0, 8);
       datasets.put(targetDatasetId, new DatasetSummary(
-          targetDatasetId, name, instrument, null, null, null, null, null));
+          targetDatasetId, name, instrument, null, null, null, null, null, null));
     } else if (!datasets.containsKey(targetDatasetId)) {
       throw new IllegalArgumentException("No such dataset: " + targetDatasetId);
     }
@@ -226,7 +238,7 @@ public class BacktestingServiceStub implements BacktestingService {
     String datasetId = "ds-" + UUID.randomUUID().toString().substring(0, 8);
     String importId = "imp-" + UUID.randomUUID().toString().substring(0, 8);
     String jobId = "ing-" + UUID.randomUUID().toString().substring(0, 8);
-    datasets.put(datasetId, new DatasetSummary(datasetId, name, instrument, null, from, to, null, null));
+    datasets.put(datasetId, new DatasetSummary(datasetId, name, instrument, null, from, to, null, null, null));
     imports.put(uploadKey(datasetId, importId), new DatasetImportStatus(
         datasetId, importId, "FETCHING", jobId, null, null));
     return new DatasetImportResult(datasetId, importId, jobId, "FETCHING");
@@ -361,7 +373,7 @@ public class BacktestingServiceStub implements BacktestingService {
   }
 
   @Override
-  public List<StrategySummary> listStrategies() {
+  public List<StrategySummary> listStrategies(boolean includeDeleted) {
     return new ArrayList<>(strategies.values());
   }
 

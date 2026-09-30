@@ -163,7 +163,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 |------|-------------|
 | `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV or Parquet file and start ingest; never exposes a presigned URL |
 | `import_dataset` / `get_dataset_import` | Fetch DEX history into a dataset and poll its asynchronous fetch and ingest state |
-| `list_datasets` / `get_dataset` | List datasets or read one dataset's metadata and current version |
+| `list_datasets` / `get_dataset` | List datasets (optionally including deleted entries) or read one dataset's metadata and current version |
 | `get_dataset_upload` | Poll the asynchronous ingest after an upload |
 | `finalize_dataset_upload` | Retry finalization after a successful PUT whose original MCP response was lost |
 | `delete_dataset` | Delete a caller-owned dataset and its versions |
@@ -180,13 +180,14 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `get_sweep_run_equity_curve` | Bounded normalized equity curve for one retained sweep trial |
 | `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
 | `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
-| `list_strategies` | List every strategy registered under this account, most recently compiled first |
+| `list_strategies` | List every strategy registered under this account; optionally include deleted entries |
 | `delete_strategy` | Release a registered strategy |
 | `get_strategy_code` | Fetch the exact source last registered for a strategy id |
-| `get_account` / `get_account_usage` | Read account tier limits and current dataset, strategy, signal and shared-storage usage |
+| `get_account` / `get_account_usage` | Read account tier limits (including the Cartesian sweep cap) and current dataset, strategy, signal and shared-storage usage |
 | `start_live` / `get_live` / `stop_live` | Start a strategy's live run, inspect sandbox/live state, and request it to stop |
 | `list_live` / `list_public_live` | Page through all your own runs or browse currently-running public runs separately |
 | `update_live` / `update_live_params` | Change run visibility/metadata or queue updates to declared strategy parameters |
+| `send_live_command` | Send a transient event to a running strategy without restarting it |
 | `get_live_signals` | Read retained signals oldest-first with optional time/instrument filters and cursor pagination |
 
 ### Account and storage
@@ -217,12 +218,22 @@ catalog containing only public runs currently running and never exposes their ow
 Both accept optional `cursor` and `limit` (default 20, API maximum 100); pass `nextCursor` back
 unchanged to fetch the next page.
 
+`list_datasets` and `list_strategies` default to active entries; set `includeDeleted=true` to include
+soft-deleted entries marked with `deletedAt`. `get_account` reports `maxSweepCartesian`, the
+maximum allowed Cartesian combination count for a sweep.
+
 `update_live` takes `runId` plus at least one of `visibility`, `name`, or `description`.
 `update_live_params` takes `runId` and a non-empty `params` object containing only declared strategy
 properties; changes take effect at an event boundary. `get_live_signals` accepts `runId`, optional
 `sinceMs`, `instrument`, opaque `cursor`, and `limit`; cursor takes precedence over `sinceMs`. Read
 oldest-first, pass returned `nextCursor` unchanged, and if retention expires a cursor, restart from
 the reported `availableSinceMs` (deduplicate `signalId` if combining with another signal feed).
+
+`send_live_command` takes an owned `runId`, non-blank `command`, and optional arbitrary JSON
+`properties` object. The strategy must implement `CommandRequestHandler`. Commands are transient,
+not stored or replayed to later replicas; use `update_live_params` for persistent state. A `503`
+means the command was not sent; ambiguous network failures have no idempotency key, so avoid blind
+retries. A successful acceptance is not confirmation that the strategy finished processing it.
 
 Example tool arguments:
 

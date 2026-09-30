@@ -10,12 +10,14 @@ import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
+import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
+import com.qtsurfer.api.client.model.SendLiveCommandRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
 import com.qtsurfer.api.sdk.SweepObjective;
 import com.qtsurfer.api.sdk.ValidationOutcome;
@@ -57,7 +59,9 @@ public interface BacktestingService {
   StrategyCompilation compileStrategy(String strategyCode);
 
   /** List datasets owned by the authenticated caller. */
-  List<DatasetSummary> listDatasets();
+  List<DatasetSummary> listDatasets(boolean includeDeleted);
+
+  default List<DatasetSummary> listDatasets() { return listDatasets(false); }
 
   /** Read one dataset owned by the authenticated caller. */
   Optional<DatasetSummary> getDataset(String datasetId);
@@ -235,7 +239,9 @@ public interface BacktestingService {
    *
    * @return the caller's registered strategies; empty when the account has none, never an error
    */
-  List<StrategySummary> listStrategies();
+  List<StrategySummary> listStrategies(boolean includeDeleted);
+
+  default List<StrategySummary> listStrategies() { return listStrategies(false); }
 
   /**
    * Release a registered strategy. Not undone by recompiling the same source afterward — that
@@ -278,6 +284,8 @@ public interface BacktestingService {
   LiveRunCompact updateLive(String runId, UpdateLiveRequest request);
 
   LiveParamsUpdateResult updateLiveParams(String runId, Map<String, Object> params);
+
+  LiveCommandResult sendLiveCommand(String runId, SendLiveCommandRequest request);
 
   LiveSignalPage getLiveSignals(String runId, Long sinceMs, String instrument,
       String cursor, Integer limit);
