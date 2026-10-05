@@ -120,6 +120,72 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.LiveRunWithStream",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunWithStream$DesiredEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunWithStream$StageEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunWithStream$VisibilityEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunDetail",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunDetail$DesiredEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunDetail$StageEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunDetail$VisibilityEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveStreamUrl",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveStreamRevoked",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveRunStats",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.LiveRunCompact",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

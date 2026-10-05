@@ -13,7 +13,11 @@ import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveRunDetail;
+import com.qtsurfer.api.client.model.LiveRunWithStream;
 import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.LiveStreamRevoked;
+import com.qtsurfer.api.client.model.LiveStreamUrl;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
@@ -271,11 +275,17 @@ public interface BacktestingService {
 
   AccountUsage getAccountUsage();
 
-  LiveRun startLive(String strategyId, StartLiveRequest request);
+  LiveRunWithStream startLive(String strategyId, StartLiveRequest request);
 
-  LiveRun getLive(String strategyId);
+  LiveRunWithStream getLive(String strategyId);
+
+  LiveRunDetail getLiveRun(String runId);
 
   LiveRun stopLive(String strategyId);
+
+  LiveStreamUrl rotateLiveStream(String runId);
+
+  LiveStreamRevoked revokeLiveStream(String runId);
 
   LiveListResponse listLive(String cursor, Integer limit);
 

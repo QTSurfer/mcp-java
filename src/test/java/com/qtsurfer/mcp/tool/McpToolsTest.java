@@ -54,8 +54,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFortyTools() {
-    assertThat(tools).hasSize(40);
+  void registersExactlyFortyThreeTools() {
+    assertThat(tools).hasSize(43);
   }
 
   @Test
@@ -68,7 +68,7 @@ class McpToolsTest {
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
-        "get_account", "get_account_usage", "start_live", "get_live", "stop_live", "list_live",
+        "get_account", "get_account_usage", "start_live", "get_live", "get_live_run", "stop_live", "rotate_live_stream", "revoke_live_stream", "list_live",
         "list_public_live", "update_live", "update_live_params", "send_live_command", "get_live_signals");
   }
 
@@ -88,12 +88,19 @@ class McpToolsTest {
         "strategyId", strategyId,
         "exchange", "binance",
         "segment", "spot",
-        "instruments", List.of("BTC/USDT"))));
-    assertThat(started).contains("Stage: SANDBOX", "Relay: false");
+        "instruments", List.of("BTC/USDT"),
+        "stream", true)));
+    assertThat(started).contains("Stage: SANDBOX", "Relay: false", "streamUrl=wss://");
     String runId = started.lines().findFirst().orElseThrow().substring("Live run ".length());
 
     assertThat(textOf(call("get_live", Map.of("strategyId", strategyId))))
-        .contains(runId, "Desired: RUNNING");
+        .contains(runId, "Desired: RUNNING", "streamUrl=wss://");
+    assertThat(textOf(call("get_live_run", Map.of("runId", runId))))
+        .contains(runId, "updatedAtMs=");
+    assertThat(textOf(call("rotate_live_stream", Map.of("runId", runId))))
+        .contains("streamUrl=wss://");
+    assertThat(textOf(call("revoke_live_stream", Map.of("runId", runId))))
+        .contains("Live stream revoked");
     assertThat(textOf(call("list_live", Map.of()))).contains("Owned live runs:");
     assertThat(textOf(call("list_public_live", Map.of()))).contains("Public live runs:");
     assertThat(textOf(call("update_live", Map.of("runId", runId, "visibility", "public"))))

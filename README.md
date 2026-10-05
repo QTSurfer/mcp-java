@@ -184,7 +184,9 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `delete_strategy` | Release a registered strategy |
 | `get_strategy_code` | Fetch the exact source last registered for a strategy id |
 | `get_account` / `get_account_usage` | Read account tier limits (including the Cartesian sweep cap) and current dataset, strategy, signal and shared-storage usage |
-| `start_live` / `get_live` / `stop_live` | Start a strategy's live run, inspect sandbox/live state, and request it to stop |
+| `start_live` / `get_live` / `stop_live` | Start a strategy's live run, inspect sandbox/live state (and an optional secret plain-stream URL), and request it to stop |
+| `get_live_run` | Inspect one owned run by its canonical id, including its last update and current optional counters |
+| `rotate_live_stream` / `revoke_live_stream` | Replace or permanently revoke a run's secret plain-WebSocket signal URL |
 | `list_live` / `list_public_live` | Page through all your own runs or browse currently-running public runs separately |
 | `update_live` / `update_live_params` | Change run visibility/metadata or queue updates to declared strategy parameters |
 | `send_live_command` | Send a transient event to a running strategy without restarting it |
@@ -209,7 +211,9 @@ Compile a strategy first, then call `start_live` with its `strategyId`, `exchang
 `instruments` (a non-empty symbol array). The server starts every run in `SANDBOX`; inspect it with
 `get_live` and poll until its state changes. Optional inputs are `type` (`ticker` by default, or
 `kline`), initial `params`, `visibility` (`private` by default), `name`, `description`, and `relay`
-(`false` by default). The only supported venue type is centralized exchange (`cx`). `instruments`
+(`false` by default). Set `stream=true` only when a plain-WebSocket consumer needs signals: it returns
+a secret `streamUrl` and also enables relay. Treat that URL as a password; do not put it in logs or
+untrusted prompts. The only supported venue type is centralized exchange (`cx`). `instruments`
 may be `['*']` only if the account tier allows every instrument. `stop_live` takes `strategyId` and
 returns the desired stop state; poll `get_live` until actual state settles.
 
@@ -221,6 +225,10 @@ unchanged to fetch the next page.
 `list_datasets` and `list_strategies` default to active entries; set `includeDeleted=true` to include
 soft-deleted entries marked with `deletedAt`. `get_account` reports `maxSweepCartesian`, the
 maximum allowed Cartesian combination count for a sweep.
+
+`get_live_run` takes the canonical `runId` and adds `updatedAtMs` plus optional current counters to
+the normal run state. `rotate_live_stream` replaces the secret stream URL; `revoke_live_stream`
+permanently disables it for that run.
 
 `update_live` takes `runId` plus at least one of `visibility`, `name`, or `description`.
 `update_live_params` takes `runId` and a non-empty `params` object containing only declared strategy

@@ -13,8 +13,12 @@ import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveRunDetail;
+import com.qtsurfer.api.client.model.LiveRunWithStream;
 import com.qtsurfer.api.client.model.LiveSignal;
 import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.LiveStreamRevoked;
+import com.qtsurfer.api.client.model.LiveStreamUrl;
 import com.qtsurfer.api.client.model.LiveSource;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.PublicLiveRun;
@@ -133,7 +137,10 @@ public final class McpTools {
         getAccountUsage(service),
         startLive(service),
         getLive(service),
+        getLiveRun(service),
         stopLive(service),
+        rotateLiveStream(service),
+        revokeLiveStream(service),
         listLive(service),
         listPublicLive(service),
         updateLive(service),
@@ -1504,6 +1511,7 @@ public final class McpTools {
             "params", prop("object", "Optional initial strategy parameter values"),
             "visibility", prop("string", "private (default) or public"),
             "relay", prop("boolean", "Request signal relay; false by default and uses storage"),
+            "stream", prop("boolean", "Return a secret plain-WebSocket signal URL; also enables relay"),
             "name", prop("string", "Optional display name"),
             "description", prop("string", "Optional run description")),
             List.of("strategyId", "exchange", "segment", "instruments"))).build();
@@ -1522,6 +1530,7 @@ public final class McpTools {
             .instruments(values.stream().map(String.class::cast).toList());
         StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
             .relay(optionalBoolean(args, "relay", false));
+        if (args.containsKey("stream")) body.stream(optionalBoolean(args, "stream", false));
         String visibility = optional(args, "visibility");
         if (visibility != null) body.visibility(StartLiveRequest.VisibilityEnum.fromValue(visibility));
         String name = optional(args, "name");
@@ -1530,7 +1539,7 @@ public final class McpTools {
         if (description != null) body.description(description);
         Map<String, Object> params = objectMap(args.get("params"), "params");
         if (params != null) body.params(params);
-        LiveRun run = service.startLive(required(args, "strategyId"), body);
+        LiveRunWithStream run = service.startLive(required(args, "strategyId"), body);
         return text(formatLiveRun(run));
       } catch (IllegalArgumentException e) {
         return error(e.getMessage());
@@ -1566,6 +1575,47 @@ public final class McpTools {
         return text(formatLiveRun(service.stopLive(required(request.arguments(), "strategyId"))));
       } catch (Exception e) {
         return error("Failed to stop live run: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getLiveRun(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_live_run")
+        .description("Read one owned live run by runId, including updatedAtMs and optional current stats.")
+        .inputSchema(schema(Map.of("runId", prop("string", "Owned live run id")), List.of("runId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        return text(formatLiveRun(service.getLiveRun(required(request.arguments(), "runId"))));
+      } catch (Exception e) {
+        return error("Failed to read live run: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification rotateLiveStream(BacktestingService service) {
+    Tool tool = Tool.builder().name("rotate_live_stream")
+        .description("Replace a live run's secret plain-WebSocket URL. Treat the returned URL as a credential.")
+        .inputSchema(schema(Map.of("runId", prop("string", "Owned live run id")), List.of("runId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        LiveStreamUrl result = service.rotateLiveStream(required(request.arguments(), "runId"));
+        return text("streamUrl=" + result.getStreamUrl());
+      } catch (Exception e) {
+        return error("Failed to rotate live stream: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification revokeLiveStream(BacktestingService service) {
+    Tool tool = Tool.builder().name("revoke_live_stream")
+        .description("Permanently revoke a live run's plain-WebSocket URL.")
+        .inputSchema(schema(Map.of("runId", prop("string", "Owned live run id")), List.of("runId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        LiveStreamRevoked result = service.revokeLiveStream(required(request.arguments(), "runId"));
+        return text("Live stream revoked for run " + result.getRunId());
+      } catch (Exception e) {
+        return error("Failed to revoke live stream: " + e.getMessage());
       }
     });
   }
@@ -1753,6 +1803,25 @@ public final class McpTools {
         + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
         + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
         + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
+  }
+
+  private static String formatLiveRun(LiveRunWithStream run) {
+    String result = "Live run " + run.getRunId() + "\nStrategy: " + run.getStrategyId()
+        + "\nStage: " + run.getStage() + "\nState: " + run.getState()
+        + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
+        + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion();
+    if (run.getStreamUrl() != null) result += "\nstreamUrl=" + run.getStreamUrl();
+    return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
+  }
+
+  private static String formatLiveRun(LiveRunDetail run) {
+    String result = "Live run " + run.getRunId() + "\nStrategy: " + run.getStrategyId()
+        + "\nStage: " + run.getStage() + "\nState: " + run.getState()
+        + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
+        + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
+        + "\nupdatedAtMs=" + run.getUpdatedAtMs();
+    if (run.getStats() != null) result += "\nStats: " + run.getStats();
+    return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }
 
   private static void appendNextCursor(StringBuilder result, String href) {

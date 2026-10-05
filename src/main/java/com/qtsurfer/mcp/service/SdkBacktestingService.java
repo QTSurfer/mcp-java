@@ -27,7 +27,11 @@ import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
+import com.qtsurfer.api.client.model.LiveRunDetail;
+import com.qtsurfer.api.client.model.LiveRunWithStream;
 import com.qtsurfer.api.client.model.LiveSignalPage;
+import com.qtsurfer.api.client.model.LiveStreamRevoked;
+import com.qtsurfer.api.client.model.LiveStreamUrl;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
@@ -122,18 +126,33 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
-  public LiveRun startLive(String strategyId, StartLiveRequest request) {
+  public LiveRunWithStream startLive(String strategyId, StartLiveRequest request) {
     return qts.startLive(strategyId, request);
   }
 
   @Override
-  public LiveRun getLive(String strategyId) {
+  public LiveRunWithStream getLive(String strategyId) {
     return qts.getLive(strategyId);
+  }
+
+  @Override
+  public LiveRunDetail getLiveRun(String runId) {
+    return qts.getLiveRun(runId);
   }
 
   @Override
   public LiveRun stopLive(String strategyId) {
     return qts.stopLive(strategyId);
+  }
+
+  @Override
+  public LiveStreamUrl rotateLiveStream(String runId) {
+    return qts.rotateLiveStream(runId);
+  }
+
+  @Override
+  public LiveStreamRevoked revokeLiveStream(String runId) {
+    return qts.revokeLiveStream(runId);
   }
 
   @Override
