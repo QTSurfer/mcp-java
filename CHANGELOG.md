@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-06
+
+### Changed 🔄
+
+- Build against `com.github.QTSurfer:sdk-java` `0.30.0` and OpenAPI `0.128.22`. `start_live`
+  accepts omitted `instruments`, letting the platform use the compiled strategy's declared
+  selection or all instruments when it declares none; explicit lists remain supported, including
+  case-insensitive pair patterns such as `*/USDT` and `BTC/*` (subject to plan limits). `start_live`
+  also accepts `warmFrom` (0–3600 seconds; zero disables replay), and `get_live`/`get_live_run`
+  report the effective value for newly started runs.
+
 ## [0.17.0] — 2026-10-05
 
 ### Added ✨

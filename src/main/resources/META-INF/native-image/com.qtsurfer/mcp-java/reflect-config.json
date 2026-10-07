@@ -264,6 +264,18 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.LiveSourceRequest",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.LiveSourceRequest$TypeEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.LiveSource",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

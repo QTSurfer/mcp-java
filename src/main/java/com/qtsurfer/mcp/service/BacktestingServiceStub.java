@@ -21,6 +21,7 @@ import com.qtsurfer.api.client.model.LiveRun;
 import com.qtsurfer.api.client.model.LiveRunCompact;
 import com.qtsurfer.api.client.model.LiveRunDetail;
 import com.qtsurfer.api.client.model.LiveRunWithStream;
+import com.qtsurfer.api.client.model.LiveSource;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.LiveStreamRevoked;
 import com.qtsurfer.api.client.model.LiveStreamUrl;
@@ -86,6 +87,7 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, DatasetUploadStatus> uploads = new ConcurrentHashMap<>();
   private final Map<String, DatasetImportStatus> imports = new ConcurrentHashMap<>();
   private final Map<String, LiveRunWithStream> liveRuns = new ConcurrentHashMap<>();
+  private volatile StartLiveRequest lastStartLiveRequest;
 
   @Override
   public Account getAccount() {
@@ -104,17 +106,27 @@ public class BacktestingServiceStub implements BacktestingService {
   @Override
   public LiveRunWithStream startLive(String strategyId, StartLiveRequest request) {
     if (!strategies.containsKey(strategyId)) throw new IllegalArgumentException("No such strategy: " + strategyId);
+    lastStartLiveRequest = request;
     String runId = "live-" + UUID.randomUUID().toString().substring(0, 8);
     LiveRunWithStream run = new LiveRunWithStream().strategyId(strategyId).runId(runId)
         .visibility(LiveRunWithStream.VisibilityEnum.PRIVATE).stage(LiveRunWithStream.StageEnum.SANDBOX)
         .state("STARTING").desired(LiveRunWithStream.DesiredEnum.RUNNING)
-        .sources(request.getSources()).params(request.getParams() == null ? Map.of() : request.getParams())
+        .sources(request.getSources().stream().map(source -> new LiveSource().venueType(source.getVenueType())
+            .exchange(source.getExchange()).segment(source.getSegment())
+            .type(LiveSource.TypeEnum.fromValue(source.getType().getValue()))
+            .instruments(source.getInstruments() == null ? List.of() : source.getInstruments())).toList())
+        .params(request.getParams() == null ? Map.of() : request.getParams())
         .paramsVersion(1).relay(Boolean.TRUE.equals(request.getRelay())).startedAtMs(System.currentTimeMillis());
+    run.warmFrom(request.getWarmFrom() == null ? 300 : request.getWarmFrom());
     if (Boolean.TRUE.equals(request.getStream())) {
       run.streamUrl(URI.create("wss://stream.invalid/live/" + runId));
     }
     liveRuns.put(strategyId, run);
     return run;
+  }
+
+  public StartLiveRequest getLastStartLiveRequest() {
+    return lastStartLiveRequest;
   }
 
   @Override
@@ -133,7 +145,7 @@ public class BacktestingServiceStub implements BacktestingService {
         .stage(LiveRunDetail.StageEnum.valueOf(run.getStage().name())).state(run.getState())
         .desired(LiveRunDetail.DesiredEnum.valueOf(run.getDesired().name())).reason(run.getReason())
         .sources(run.getSources()).params(run.getParams()).paramsVersion(run.getParamsVersion())
-        .relay(run.getRelay()).startedAtMs(run.getStartedAtMs()).stats(run.getStats())
+        .relay(run.getRelay()).startedAtMs(run.getStartedAtMs()).stats(run.getStats()).warmFrom(run.getWarmFrom())
         .updatedAtMs(System.currentTimeMillis());
   }
 

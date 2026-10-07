@@ -19,7 +19,7 @@ import com.qtsurfer.api.client.model.LiveSignal;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.LiveStreamRevoked;
 import com.qtsurfer.api.client.model.LiveStreamUrl;
-import com.qtsurfer.api.client.model.LiveSource;
+import com.qtsurfer.api.client.model.LiveSourceRequest;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.PublicLiveRun;
 import com.qtsurfer.api.client.model.StartLiveRequest;
@@ -1496,7 +1496,10 @@ public final class McpTools {
     Tool tool = Tool.builder().name("start_live")
         .description("Start a registered strategy on one centralized-exchange feed. A new run "
             + "always begins in SANDBOX for a trial before promotion to LIVE. Required: strategyId, "
-            + "exchange, segment, and instruments (array; use [\"*\"] only when account tier permits). "
+            + "exchange, and segment. instruments is optional: omission uses the strategy's declared "
+            + "instrument selection, or all instruments if it declares none; an explicit array selects "
+            + "instruments (for example [\"*\"], [\"*/USDT\"], or [\"BTC/*\"]; wildcard patterns "
+            + "require a plan that permits all instruments, and pair matching is case-insensitive). "
             + "type defaults to ticker; optional params must match the strategy's declared properties. "
             + "visibility defaults to private. relay defaults to false; enable only when signals are "
             + "needed because retained signal data consumes shared account storage. Check "
@@ -1506,31 +1509,43 @@ public final class McpTools {
             "exchange", prop("string", "Exchange id, e.g. binance"),
             "segment", prop("string", "Market segment, e.g. spot"),
             "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
-                "description", "Symbols, or [\"*\"] when account limits allow all instruments"),
+                "description", "Optional symbols; omit to use the strategy's declared selection, or all if none; pair matching is case-insensitive; wildcard patterns like [\"*/USDT\"] require account limits"),
             "type", prop("string", "ticker or kline; defaults to ticker"),
             "params", prop("object", "Optional initial strategy parameter values"),
             "visibility", prop("string", "private (default) or public"),
             "relay", prop("boolean", "Request signal relay; false by default and uses storage"),
             "stream", prop("boolean", "Return a secret plain-WebSocket signal URL; also enables relay"),
+            "warmFrom", prop("integer", "Optional seconds of market replay before start; 0 disables warmup, maximum 3600"),
             "name", prop("string", "Optional display name"),
             "description", prop("string", "Optional run description")),
-            List.of("strategyId", "exchange", "segment", "instruments"))).build();
+            List.of("strategyId", "exchange", "segment"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         Map<String, Object> args = request.arguments();
         Object rawInstruments = args.get("instruments");
-        if (!(rawInstruments instanceof List<?> values) || values.isEmpty()
-            || values.stream().anyMatch(value -> !(value instanceof String))) {
-          throw new IllegalArgumentException("instruments must be a non-empty array of strings");
-        }
-        LiveSource source = new LiveSource().venueType("cx")
+        LiveSourceRequest source = new LiveSourceRequest().venueType("cx")
             .exchange(required(args, "exchange")).segment(required(args, "segment"))
-            .type(LiveSource.TypeEnum.fromValue(optional(args, "type") == null
+            .type(LiveSourceRequest.TypeEnum.fromValue(optional(args, "type") == null
                 ? "ticker" : required(args, "type")))
-            .instruments(values.stream().map(String.class::cast).toList());
+            // The generated model defaults optional arrays to []; null is required for omission.
+            .instruments(null);
+        if (args.containsKey("instruments")) {
+          if (!(rawInstruments instanceof List<?> values) || values.isEmpty()
+              || values.stream().anyMatch(value -> !(value instanceof String))) {
+            throw new IllegalArgumentException("instruments must be a non-empty array of strings when provided");
+          }
+          source.instruments(values.stream().map(String.class::cast).toList());
+        }
         StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
             .relay(optionalBoolean(args, "relay", false));
         if (args.containsKey("stream")) body.stream(optionalBoolean(args, "stream", false));
+        Integer warmFrom = parseOptionalInteger(args.get("warmFrom"), "warmFrom");
+        if (warmFrom != null) {
+          if (warmFrom < 0 || warmFrom > 3600) {
+            throw new IllegalArgumentException("warmFrom must be between 0 and 3600 seconds");
+          }
+          body.warmFrom(warmFrom);
+        }
         String visibility = optional(args, "visibility");
         if (visibility != null) body.visibility(StartLiveRequest.VisibilityEnum.fromValue(visibility));
         String name = optional(args, "name");
@@ -1810,6 +1825,7 @@ public final class McpTools {
         + "\nStage: " + run.getStage() + "\nState: " + run.getState()
         + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
         + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion();
+    if (run.getWarmFrom() != null) result += "\nWarm from: " + run.getWarmFrom() + " seconds";
     if (run.getStreamUrl() != null) result += "\nstreamUrl=" + run.getStreamUrl();
     return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }
@@ -1820,6 +1836,7 @@ public final class McpTools {
         + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
         + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
         + "\nupdatedAtMs=" + run.getUpdatedAtMs();
+    if (run.getWarmFrom() != null) result += "\nWarm from: " + run.getWarmFrom() + " seconds";
     if (run.getStats() != null) result += "\nStats: " + run.getStats();
     return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }

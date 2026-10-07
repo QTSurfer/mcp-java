@@ -207,15 +207,23 @@ The empty argument object above is the input to either account tool.
 
 ### Live execution
 
-Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, `segment`, and
-`instruments` (a non-empty symbol array). The server starts every run in `SANDBOX`; inspect it with
-`get_live` and poll until its state changes. Optional inputs are `type` (`ticker` by default, or
-`kline`), initial `params`, `visibility` (`private` by default), `name`, `description`, and `relay`
-(`false` by default). Set `stream=true` only when a plain-WebSocket consumer needs signals: it returns
+Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, and `segment`.
+`instruments` is optional: omit it to use the instruments declared by the compiled QTScript
+strategy, or all instruments in the selected exchange/segment if the strategy declares none. An
+explicit non-empty array selects instruments; empty arrays and `null` are rejected. Pair matching
+is case-insensitive; either side can be `*` (for example `*/USDT` or `BTC/*`) when the account plan
+allows wildcard selection. The server starts every run in `SANDBOX`; inspect it with `get_live` and
+poll until its state changes. Optional
+inputs are `type` (`ticker` by default, or `kline`), initial `params`, `visibility` (`private` by
+default), `name`, `description`, `relay` (false by default), and `warmFrom` (integer seconds,
+0–3600). `warmFrom=0` disables market replay; omit it to retain the platform's automatic short
+warmup. It is start-only, not an `update_live_params` property, and its effective value is shown by
+`get_live` and `get_live_run` for runs created after this capability existed. Set `stream=true` only
+when a plain-WebSocket consumer needs signals: it returns
 a secret `streamUrl` and also enables relay. Treat that URL as a password; do not put it in logs or
 untrusted prompts. The only supported venue type is centralized exchange (`cx`). `instruments`
-may be `['*']` only if the account tier allows every instrument. `stop_live` takes `strategyId` and
-returns the desired stop state; poll `get_live` until actual state settles.
+may include `*` on either side only if the account tier allows wildcard selection. `stop_live` takes
+`strategyId` and returns the desired stop state; poll `get_live` until actual state settles.
 
 Use `list_live` for all owned runs (including sandbox/stopped); `list_public_live` is a different
 catalog containing only public runs currently running and never exposes their owner/strategy.

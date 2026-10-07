@@ -89,14 +89,15 @@ class McpToolsTest {
         "exchange", "binance",
         "segment", "spot",
         "instruments", List.of("BTC/USDT"),
-        "stream", true)));
-    assertThat(started).contains("Stage: SANDBOX", "Relay: false", "streamUrl=wss://");
+        "stream", true,
+        "warmFrom", 0)));
+    assertThat(started).contains("Stage: SANDBOX", "Relay: false", "Warm from: 0 seconds", "streamUrl=wss://");
     String runId = started.lines().findFirst().orElseThrow().substring("Live run ".length());
 
     assertThat(textOf(call("get_live", Map.of("strategyId", strategyId))))
         .contains(runId, "Desired: RUNNING", "streamUrl=wss://");
     assertThat(textOf(call("get_live_run", Map.of("runId", runId))))
-        .contains(runId, "updatedAtMs=");
+        .contains(runId, "updatedAtMs=", "Warm from: 0 seconds");
     assertThat(textOf(call("rotate_live_stream", Map.of("runId", runId))))
         .contains("streamUrl=wss://");
     assertThat(textOf(call("revoke_live_stream", Map.of("runId", runId))))
@@ -116,6 +117,20 @@ class McpToolsTest {
         .contains("Retained signals (oldest first):", "None.");
     assertThat(textOf(call("stop_live", Map.of("strategyId", strategyId))))
         .contains("Desired: STOPPED");
+  }
+
+  @Test
+  void startLiveAllowsOmittingInstruments() {
+    String strategyId = service.compileStrategy("public class Demo {} ").strategyId();
+
+    String started = textOf(call("start_live", Map.of(
+        "strategyId", strategyId,
+        "exchange", "binance",
+        "segment", "spot")));
+
+    assertThat(started).contains("Stage: SANDBOX");
+    assertThat(service.getLive(strategyId).getSources()).hasSize(1);
+    assertThat(service.getLastStartLiveRequest().getSources().get(0).getInstruments()).isNull();
   }
 
   // ---- version ------------------------------------------------------------

@@ -85,6 +85,8 @@ class ReflectConfigTest {
       MODEL + "DatasetImportDexRequest$VersionEnum",
       MODEL + "StartLiveRequest",
       MODEL + "StartLiveRequest$VisibilityEnum",
+      MODEL + "LiveSourceRequest",
+      MODEL + "LiveSourceRequest$TypeEnum",
       MODEL + "UpdateLiveRequest",
       MODEL + "UpdateLiveRequest$VisibilityEnum",
       MODEL + "UpdateLiveParamsRequest",
