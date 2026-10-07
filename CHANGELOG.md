@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-10-07
+
+### Fixed 🐛
+
+- `cancel_sweep` now waits for the SDK's `progress.pendingShards` drain before the sweep result is considered complete, preserving rows from runs that were already in flight.
+
 ## [0.18.0] — 2026-10-06
 
 ### Changed 🔄

@@ -178,7 +178,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `submit_sweep` | Run one strategy across a parameter grid on an instrument or ready dataset, optionally walk-forward validated; returns a sweep ID |
 | `get_sweep_status` | Progress and a capped, plateau-ranked leaderboard for a sweep |
 | `get_sweep_run_equity_curve` | Bounded normalized equity curve for one retained sweep trial |
-| `cancel_sweep` | Stop a running sweep between parameter vectors, keeping the rows already scored |
+| `cancel_sweep` | Stop a running sweep between parameter vectors; the SDK waits for `progress.pendingShards` to reach `0` so rows already in flight are preserved |
 | `get_sweep_sensitivity` | Which parameter mattered: marginals per axis, or one named interaction surface |
 | `list_strategies` | List every strategy registered under this account; optionally include deleted entries |
 | `delete_strategy` | Release a registered strategy |
