@@ -1494,8 +1494,11 @@ public final class McpTools {
 
   private static SyncToolSpecification startLive(BacktestingService service) {
     Tool tool = Tool.builder().name("start_live")
-        .description("Start a registered strategy on one centralized-exchange feed. A new run "
-            + "always begins in SANDBOX for a trial before promotion to LIVE. Required: strategyId, "
+        .description("Start a registered strategy on one centralized-exchange feed. A first run "
+            + "begins in SANDBOX; a compilation starts directly in LIVE after an earlier run was "
+            + "promoted and none were stopped for exceeding resource limits, unless sandbox=true "
+            + "requests another trial. Recompiled strategies start in SANDBOX. "
+            + "Required: strategyId, "
             + "exchange, and segment. instruments is optional: omission uses the strategy's declared "
             + "instrument selection, or all instruments if it declares none; an explicit array selects "
             + "instruments (for example [\"*\"], [\"*/USDT\"], or [\"BTC/*\"]; wildcard patterns "
@@ -1513,6 +1516,7 @@ public final class McpTools {
             "type", prop("string", "ticker or kline; defaults to ticker"),
             "params", prop("object", "Optional initial strategy parameter values"),
             "visibility", prop("string", "private (default) or public"),
+            "sandbox", prop("boolean", "Repeat the sandbox trial for an already-promoted compiled strategy; false by default. Useful for debugging with sandbox WebSocket history."),
             "relay", prop("boolean", "Request signal relay; false by default and uses storage"),
             "stream", prop("boolean", "Return a secret plain-WebSocket signal URL; also enables relay"),
             "warmFrom", prop("integer", "Optional seconds of market replay before start; 0 disables warmup, maximum 3600"),
@@ -1538,6 +1542,7 @@ public final class McpTools {
         }
         StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
             .relay(optionalBoolean(args, "relay", false));
+        if (args.containsKey("sandbox")) body.sandbox(optionalBoolean(args, "sandbox", false));
         if (args.containsKey("stream")) body.stream(optionalBoolean(args, "stream", false));
         Integer warmFrom = parseOptionalInteger(args.get("warmFrom"), "warmFrom");
         if (warmFrom != null) {

@@ -212,10 +212,13 @@ Compile a strategy first, then call `start_live` with its `strategyId`, `exchang
 strategy, or all instruments in the selected exchange/segment if the strategy declares none. An
 explicit non-empty array selects instruments; empty arrays and `null` are rejected. Pair matching
 is case-insensitive; either side can be `*` (for example `*/USDT` or `BTC/*`) when the account plan
-allows wildcard selection. The server starts every run in `SANDBOX`; inspect it with `get_live` and
-poll until its state changes. Optional
+allows wildcard selection. A first run starts in `SANDBOX`; a later run starts directly in `LIVE`
+when a run of the same compilation was promoted and none of its runs was stopped for exceeding
+resource limits, unless `sandbox=true` requests another trial. Recompiled strategies start in
+`SANDBOX` again. Inspect the run with `get_live` and poll until its state changes. Optional
 inputs are `type` (`ticker` by default, or `kline`), initial `params`, `visibility` (`private` by
-default), `name`, `description`, `relay` (false by default), and `warmFrom` (integer seconds,
+default), `sandbox` (false by default), `name`, `description`, `relay` (false by default), and
+`warmFrom` (integer seconds,
 0–3600). `warmFrom=0` disables market replay; omit it to retain the platform's automatic short
 warmup. It is start-only, not an `update_live_params` property, and its effective value is shown by
 `get_live` and `get_live_run` for runs created after this capability existed. Set `stream=true` only

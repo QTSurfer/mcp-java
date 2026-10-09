@@ -133,6 +133,22 @@ class McpToolsTest {
     assertThat(service.getLastStartLiveRequest().getSources().get(0).getInstruments()).isNull();
   }
 
+  @Test
+  void startLiveCanRequestAnotherSandboxTrial() {
+    String strategyId = service.compileStrategy("public class Demo {} ").strategyId();
+
+    String started = textOf(call("start_live", Map.of(
+        "strategyId", strategyId,
+        "exchange", "binance",
+        "segment", "spot",
+        "sandbox", true)));
+
+    assertThat(started).contains("Stage: SANDBOX");
+    assertThat(service.getLastStartLiveRequest().getSandbox()).isTrue();
+    assertThat(tool("start_live").tool().description())
+        .contains("starts directly in LIVE", "sandbox=true");
+  }
+
   // ---- version ------------------------------------------------------------
 
   @Test

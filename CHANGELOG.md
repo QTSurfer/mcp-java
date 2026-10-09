@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-10-10
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.32.0 and OpenAPI 0.128.25. `start_live` accepts optional `sandbox`
+  (`false` by default): a compilation with an earlier promoted run and no runs stopped for exceeding
+  resource limits starts in `LIVE` unless `sandbox: true` requests another trial. First runs and
+  recompiled strategies still start in `SANDBOX`. Requesting the sandbox is useful for debugging
+  with the direct WebSocket client's retained signal history.
+
 ## [0.18.1] — 2026-10-07
 
 ### Fixed 🐛
