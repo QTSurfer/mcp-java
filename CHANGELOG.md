@@ -4,7 +4,29 @@ All notable changes to `com.qtsurfer:mcp-java` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.20.0] — 2026-10-17
+
+### Added ✨
+
+- Discover DEX pool addresses with `list_pools`, including token addresses, fees, liquidity
+  and optional market values. `list_exchanges` reports venue types and catalogue/live segments;
+  `list_instruments` remains the CEX instrument tool.
+- Start one pool's live kline feed with `start_live` using `venueType=dex`, `type=kline` and
+  one pool address. CEX remains the default; discover valid live segments before starting.
+- Import CEX spot ticker or kline history with `import_dataset` (`type=cex`), optionally choosing
+  any of fifteen cadences. Poll `get_dataset_import` until ready before using the dataset;
+  import ranges and retained data are subject to account quotas. Existing DEX inputs remain supported.
+- Inspect timestamp units and provisional-hour boundaries in `download_tickers` and
+  `download_klines` results. Downloads cover seven days; use dataset imports for older history,
+  refetch provisional data and respect retry delays for unavailable recent hours.
+- Inspect resource-to-actions key scopes with `get_account`; grants are reported, not yet enforced.
+- Explain `403 apikey_without_scopes` at startup: configure at least one resource/action scope on
+  the API key in the web app before restarting the server.
+
+### Changed 🔄
+
+- Lastra uses microsecond timestamps and `application/vnd.qtsurfer.lastra`; Parquet timestamps
+  remain milliseconds. Pool market values can be absent when unknown.
 
 ## [0.19.0] — 2026-10-10
 

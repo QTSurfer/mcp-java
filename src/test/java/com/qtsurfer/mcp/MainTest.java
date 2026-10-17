@@ -3,6 +3,7 @@ package com.qtsurfer.mcp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.qtsurfer.api.client.model.AuthTokenError;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -98,6 +99,16 @@ class MainTest {
     // ever reached from the non-stub branch. This is enforced by the structure
     // of Main.run() — see the if (stub) {...} else {...} dispatch.
     assertThat(authBefore).isGreaterThanOrEqualTo(0);
+  }
+
+  @Test
+  void scopeFreeKeyHintExplainsHowToRecover() {
+    assertThat(Main.authenticationHint(AuthTokenError.CodeEnum.APIKEY_WITHOUT_SCOPES))
+        .contains("requires scopes")
+        .contains("at least one resource/action scope")
+        .contains("web app");
+    assertThat(Main.authenticationHint(AuthTokenError.CodeEnum.INVALID_APIKEY))
+        .contains("valid, unrevoked API key");
   }
 
 }

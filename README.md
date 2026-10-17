@@ -81,8 +81,10 @@ refreshes it transparently for the lifetime of the process — no manual
 rotation required.
 
 If `QTSURFER_APIKEY` is missing or the initial exchange returns 401, the
-server exits non-zero with a clear error before exposing any tools (your
-MCP client UI will surface the failure).
+server exits non-zero with a clear error before exposing any tools. A deployment
+that requires scopes returns 403 `apikey_without_scopes` for a key with none;
+create a key with at least one resource/action scope in the web app and update
+the MCP client's environment before restarting.
 
 ### Claude Code (`~/.claude.json`)
 
@@ -162,14 +164,15 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | Tool | Description |
 |------|-------------|
 | `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV or Parquet file and start ingest; never exposes a presigned URL |
-| `import_dataset` / `get_dataset_import` | Fetch DEX history into a dataset and poll its asynchronous fetch and ingest state |
+| `import_dataset` / `get_dataset_import` | Import CEX market history or DEX pool history into a dataset and poll its asynchronous fetch and ingest state |
 | `list_datasets` / `get_dataset` | List datasets (optionally including deleted entries) or read one dataset's metadata and current version |
 | `get_dataset_upload` | Poll the asynchronous ingest after an upload |
 | `finalize_dataset_upload` | Retry finalization after a successful PUT whose original MCP response was lost |
 | `delete_dataset` | Delete a caller-owned dataset and its versions |
-| `list_exchanges` | List available exchanges (e.g. `binance`, `binancefutures`) |
-| `list_instruments` | List instruments for an exchange with per-data-type coverage windows and market info |
-| `download_tickers` / `download_klines` | Stream one UTC-hour segment into a guarded local file; returns path metadata only |
+| `list_exchanges` | Discover CEX/DEX venues, catalogue segments and live-enabled segments |
+| `list_instruments` | List CEX instruments with per-data-type coverage windows and market info |
+| `list_pools` | Discover DEX pool addresses, token addresses, fees, liquidity and market information |
+| `download_tickers` / `download_klines` | Stream one recent UTC-hour segment into a guarded local file; return path, byte count and timestamp/provisional metadata |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
 | `storeSignals` | Optional on selected `submit_backtest` or `submit_sweep` calls; disabled by default because retained signals consume storage quota |
 | `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
@@ -205,6 +208,27 @@ needs the retained signal history, and check usage again before enabling it for 
 
 The empty argument object above is the input to either account tool.
 
+`get_account` also reports the API key's resource-to-actions `scopes` map. An empty map
+means no grants. The API reports per-operation scopes without enforcing them, though a deployment
+can require at least one scope when the MCP server exchanges its key for a token.
+
+### Venue and pool discovery
+
+Call `list_exchanges` first: `venueType` is `cex` or `dex`, `segments` lists catalogues,
+and `liveSegments` lists the segments that can feed a live run. A catalogue is not evidence
+that its segment is live-enabled. Use `list_instruments` for CEX and `list_pools` for DEX:
+
+```json
+{ "exchangeId": "robinhood", "segment": "uniswap-v3" }
+```
+
+Pass this object to `list_pools`. Omit `segment` to select the venue's first protocol.
+The catalogue contains at most 50 pools, ranked by 24-hour USD volume, with at least
+$10,000 liquidity and hourly refreshes. Unknown prices, volumes and creation dates are absent,
+not zero. `volume24h` is in quote tokens; `volume24hUsd` is in USD. Use a pool's `id`
+(its address), not its `symbol`, when starting a live run; a valid unlisted pool may run too.
+DEX catalogues cannot be passed directly to managed-data preparation or backtesting.
+
 ### Live execution
 
 Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, and `segment`.
@@ -224,9 +248,30 @@ warmup. It is start-only, not an `update_live_params` property, and its effectiv
 `get_live` and `get_live_run` for runs created after this capability existed. Set `stream=true` only
 when a plain-WebSocket consumer needs signals: it returns
 a secret `streamUrl` and also enables relay. Treat that URL as a password; do not put it in logs or
-untrusted prompts. The only supported venue type is centralized exchange (`cx`). `instruments`
+untrusted prompts. `venueType` defaults to `cex`; CEX `instruments`
 may include `*` on either side only if the account tier allows wildcard selection. `stop_live` takes
 `strategyId` and returns the desired stop state; poll `get_live` until actual state settles.
+
+For DEX, set `venueType=dex`, `type=kline`, and exactly one pool address in `instruments`;
+omission and wildcards are invalid. Select `exchange` and `segment` from discovery, not by
+guessing a chain/protocol tuple. For example, after choosing an actual discovered pool:
+
+```json
+{
+  "strategyId": "strategy-123",
+  "venueType": "dex",
+  "exchange": "robinhood",
+  "segment": "uniswap-v3",
+  "type": "kline",
+  "instruments": ["0x0000000000000000000000000000000000000001"]
+}
+```
+
+Replace the example address with the chosen pool's `id`. Invalid tuples are rejected;
+pool-resolution or capacity failures during startup settle as `FAILED` with desired state
+`STOPPED`, without reserving a live slot. Poll the returned state rather than assuming acceptance
+means the run is running. Warm-up replay runs at roughly six times normal speed; a full
+3,600-second warm-up can take about ten minutes.
 
 Use `list_live` for all owned runs (including sandbox/stopped); `list_public_live` is a different
 catalog containing only public runs currently running and never exposes their owner/strategy.
@@ -299,6 +344,54 @@ docker run -i --rm -e QTSURFER_APIKEY \
 Once `get_dataset_upload` returns `READY`, submit a run with `datasetId`; omit `exchangeId` and
 `instrument`, because MCP derives the reserved `exchangeId=user`. `datasetVersionId` pins a prior
 ready version. `equityCurve` is accepted by both run tools and is passed through to the API.
+
+### Import market history
+
+`import_dataset` defaults to `type=dex`, preserving the existing pool-history inputs
+(`network`, `contract`, `protocol`, `version`). For CEX, pass `type=cex`, a discovered
+`exchange`, `segment=spot`, and `dataType=ticker` or `klines`; do not include DEX fields.
+
+```json
+{
+  "name": "BTC historical klines",
+  "instrument": "BTC/USDT",
+  "type": "cex",
+  "exchange": "binance",
+  "segment": "spot",
+  "dataType": "klines",
+  "from": "2026-10-01T00:00:00Z",
+  "to": "2026-10-01T01:00:00Z",
+  "cadence": "1m"
+}
+```
+
+Choose a range within `get_account`'s import-range cap. CEX cadence accepts `1s`, `5s`,
+`1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`, `1d`, `1w`, or `1q`.
+Omission chooses the finest cadence held across the entire range; requesting a finer or
+incompatible cadence fails asynchronously. DEX accepts `1s`, `1m`, `5m`, or omission for
+native events. Save the returned `datasetId`/`importId` and call `get_dataset_import` until
+`READY` or `FAILED`; only a ready version can be backtested. Resume polling those ids after
+an interrupted wait instead of creating another dataset. Imports consume dataset, shared-storage
+and execution quotas; inspect account limits and usage first, and inspect the terminal error
+for unavailable source history, invalid pools, cadence or execution-time failures.
+
+### Recent hourly downloads
+
+`download_tickers` and `download_klines` take `exchangeId`, `base`, `quote`, `hour`
+(`YYYY-MM-DDTHH`, UTC), `outputPath`, optional `format` (`lastra` by default, or `parquet`),
+and `overwrite` (`false` by default). Only the last seven days are available here; use
+`import_dataset` for older history. The result reports `contentType`, `timestampUnit`,
+`dataStatus`, and `dataThrough` alongside the relative path and byte count. No binary bytes
+are included in the tool reply. Lastra uses `application/vnd.qtsurfer.lastra` and microsecond
+timestamps; Parquet timestamps remain milliseconds. `dataThrough` is an ISO-8601 UTC instant.
+
+`dataStatus=provisional` means the hour can still grow: download it again later, using
+`overwrite=true` deliberately if replacing the existing file. Do not archive it as a final hour.
+Some deployments instead return `404 NOT_YET_AVAILABLE`; respect `Retry-After`, as for
+`503 TEMPORARILY_UNAVAILABLE`. `404 NO_DATA` is a stored empty hour, not a pending one.
+`400 OUTSIDE_WINDOW` suggests an HTTP dataset-import request; translate its source/range
+into the `import_dataset` inputs and supply a name. Never execute a suggested recovery call
+automatically. Treat unknown reasons like absent reasons, using HTTP status and message.
 
 ### Sweeps
 

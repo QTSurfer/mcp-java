@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.model.DatasetImportRequest;
+import com.qtsurfer.api.client.model.PoolDetail;
+
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
@@ -50,6 +53,7 @@ import com.qtsurfer.mcp.model.StrategyCompilation;
 import com.qtsurfer.mcp.model.MarketDataDownload;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.net.URI;
 import java.util.ArrayList;
@@ -57,6 +61,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,12 +93,17 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, DatasetImportStatus> imports = new ConcurrentHashMap<>();
   private final Map<String, LiveRunWithStream> liveRuns = new ConcurrentHashMap<>();
   private volatile StartLiveRequest lastStartLiveRequest;
+  private volatile DatasetImportRequest lastDatasetImportRequest;
+
+  /** @return the last typed import submitted to this stub */
+  public DatasetImportRequest getLastDatasetImportRequest() { return lastDatasetImportRequest; }
 
   @Override
   public Account getAccount() {
     return new Account().userId("stub-user").tier("free")
+        .scopes(Map.of("exchanges", List.of("read"), "backtests", List.of("read", "execute")))
         .maxDatasets(10).maxDatasetBytes(1_000_000L).maxTotalStorageBytes(10_000_000L)
-        .maxSweepCartesian(10_000);
+        .maxSweepCartesian(10_000).maxImportRangeHours(168);
   }
 
   @Override
@@ -111,7 +121,8 @@ public class BacktestingServiceStub implements BacktestingService {
     LiveRunWithStream run = new LiveRunWithStream().strategyId(strategyId).runId(runId)
         .visibility(LiveRunWithStream.VisibilityEnum.PRIVATE).stage(LiveRunWithStream.StageEnum.SANDBOX)
         .state("STARTING").desired(LiveRunWithStream.DesiredEnum.RUNNING)
-        .sources(request.getSources().stream().map(source -> new LiveSource().venueType(source.getVenueType())
+        .sources(request.getSources().stream().map(source -> new LiveSource()
+            .venueType(LiveSource.VenueTypeEnum.fromValue(source.getVenueType().getValue()))
             .exchange(source.getExchange()).segment(source.getSegment())
             .type(LiveSource.TypeEnum.fromValue(source.getType().getValue()))
             .instruments(source.getInstruments() == null ? List.of() : source.getInstruments())).toList())
@@ -305,6 +316,24 @@ public class BacktestingServiceStub implements BacktestingService {
     return Optional.ofNullable(imports.get(uploadKey(datasetId, importId)));
   }
 
+  @Override
+  public DatasetImportResult importDataset(DatasetImportRequest request) {
+    lastDatasetImportRequest = request;
+    return importDataset(request.getName(), request.getInstrument(), request.getFrom().toString(),
+        request.getTo().toString(), null, null, null, null);
+  }
+
+  @Override
+  public List<PoolDetail> listPools(String exchangeId, String segment) {
+    return List.of(new PoolDetail().id("0x0000000000000000000000000000000000000001")
+        .symbol("WETH/USDC").base("WETH").quote("USDC")
+        .baseAddress("0x0000000000000000000000000000000000000002")
+        .quoteAddress("0x0000000000000000000000000000000000000003")
+        .feePercent(new BigDecimal("0.3"))
+        .tvlUsd(new BigDecimal("20000"))
+        .volume24hUsd(new BigDecimal("1000")));
+  }
+
   private static String uploadKey(String datasetId, String uploadId) {
     return datasetId + ":" + uploadId;
   }
@@ -312,9 +341,14 @@ public class BacktestingServiceStub implements BacktestingService {
   @Override
   public List<Exchange> listExchanges() {
     return List.of(
-        new Exchange().id("binance").name("Binance").description("Binance spot exchange"),
+        new Exchange().id("binance").name("Binance").description("Binance spot exchange")
+            .venueType(Exchange.VenueTypeEnum.CEX).segments(Set.of("spot", "futures"))
+            .liveSegments(Set.of("spot")),
         new Exchange().id("binancefutures").name("Binance Futures")
-            .description("Binance perpetual futures exchange"));
+            .description("Binance perpetual futures exchange").venueType(Exchange.VenueTypeEnum.CEX)
+            .segments(Set.of("futures")).liveSegments(Set.of()),
+        new Exchange().id("robinhood").name("Robinhood Chain").venueType(Exchange.VenueTypeEnum.DEX)
+            .segments(Set.of("uniswap-v3")).liveSegments(Set.of("uniswap-v3")));
   }
 
   @Override

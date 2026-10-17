@@ -4,6 +4,7 @@ import com.qtsurfer.api.sdk.QTSurfer;
 import com.qtsurfer.api.sdk.auth.AuthOptions;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.api.sdk.errors.QTSAuthError;
+import com.qtsurfer.api.client.model.AuthTokenError;
 import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import com.qtsurfer.mcp.service.SdkBacktestingService;
 import org.slf4j.Logger;
@@ -109,8 +110,11 @@ public class Main {
         qts = authenticate(apikey, url);
       } catch (QTSAuthError e) {
         System.err.println("error: authentication failed: " + e.getMessage());
-        System.err.println(
-            "       Verify QTSURFER_APIKEY is a valid, unrevoked API key for " + url);
+        String hint = e.getAuthTokenError()
+            .map(AuthTokenError::getCode)
+            .map(Main::authenticationHint)
+            .orElse("Verify QTSURFER_APIKEY is a valid, unrevoked API key for " + url);
+        System.err.println("       " + hint);
         return 3;
       }
       try {
@@ -126,6 +130,13 @@ public class Main {
     Runtime.getRuntime().addShutdownHook(new Thread(runner::close, "mcp-shutdown"));
     runner.run();
     return 0;
+  }
+
+  static String authenticationHint(AuthTokenError.CodeEnum code) {
+    if (code == AuthTokenError.CodeEnum.APIKEY_WITHOUT_SCOPES) {
+      return "This deployment requires scopes: create an API key with at least one resource/action scope in the web app.";
+    }
+    return "Verify QTSURFER_APIKEY is a valid, unrevoked API key.";
   }
 
   /**

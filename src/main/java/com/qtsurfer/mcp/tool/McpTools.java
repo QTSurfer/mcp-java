@@ -1,11 +1,18 @@
 package com.qtsurfer.mcp.tool;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import com.qtsurfer.mcp.McpServerRunner;
 import com.qtsurfer.api.client.model.Exchange;
+import com.qtsurfer.api.client.invoker.ApiClient;
+import com.qtsurfer.api.client.model.DatasetImportRequest;
+import com.qtsurfer.api.client.model.DatasetImportCexRequest;
+import com.qtsurfer.api.client.model.DatasetImportDexRequest;
+import com.qtsurfer.api.client.model.PoolDetail;
+import com.qtsurfer.api.sdk.errors.QTSError;
 import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
@@ -116,6 +123,7 @@ public final class McpTools {
         deleteDataset(service),
         listExchanges(service),
         listInstruments(service),
+        listPools(service),
         downloadTickers(service),
         downloadKlines(service),
         submitBacktest(service),
@@ -223,31 +231,68 @@ public final class McpTools {
 
   private static SyncToolSpecification importDataset(BacktestingService service) {
     Tool tool = Tool.builder().name("import_dataset")
-        .description("Create a dataset by fetching DEX swap history instead of uploading a file. "
-            + "The contract must identify the pool on ethereum or robinhood. Returns datasetId and importId; "
+        .description("Create a dataset from CEX market history or DEX swap history. type defaults to dex. "
+            + "For cex provide exchange, segment=spot and dataType=ticker|klines. For dex provide network, "
+            + "contract, protocol and version. Optional cadence selects bars (DEX: 1s/1m/5m; CEX: 1s to 1q). "
+            + "CEX omission chooses the finest cadence the whole range holds; finer requests fail asynchronously. "
+            + "Returns datasetId and importId; "
             + "poll get_dataset_import until READY before using the dataset in a run.")
-        .inputSchema(schema(Map.of(
+        .inputSchema(schema(mapOf(
             "name", prop("string", "Unique dataset name"),
             "instrument", prop("string", "Pair symbol, e.g. WETH/USDC"),
             "from", prop("string", "Inclusive ISO-8601 timestamp"),
             "to", prop("string", "Exclusive ISO-8601 timestamp"),
+            "type", prop("string", "dex (default) or cex"),
+            "cadence", prop("string", "Optional candle cadence; omitted keeps DEX native events or CEX finest shared cadence"),
+            "exchange", prop("string", "CEX exchange id from list_exchanges"),
+            "segment", prop("string", "CEX import segment, currently spot"),
+            "dataType", prop("string", "CEX source and resulting dataset type: ticker or klines"),
             "network", prop("string", "DEX network: ethereum or robinhood"),
             "contract", prop("string", "Pool or pair contract address"),
             "protocol", prop("string", "DEX protocol, currently uniswap"),
             "version", prop("string", "Protocol version: v2 or v3")),
-            List.of("name", "instrument", "from", "to", "network", "contract", "protocol", "version"))).build();
+            List.of("name", "instrument", "from", "to"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         Map<String, Object> args = request.arguments();
-        DatasetImportResult result = service.importDataset(required(args, "name"), required(args, "instrument"),
-            required(args, "from"), required(args, "to"), required(args, "network"), required(args, "protocol"),
-            required(args, "version"), required(args, "contract"));
+        String type = optional(args, "type") == null ? "dex" : required(args, "type").trim().toLowerCase(Locale.ROOT);
+        DatasetImportRequest body = new DatasetImportRequest().name(required(args, "name"))
+            .instrument(required(args, "instrument"))
+            .from(OffsetDateTime.parse(required(args, "from"))).to(OffsetDateTime.parse(required(args, "to")))
+            .type(DatasetImportRequest.TypeEnum.fromValue(type));
+        String cadence = optional(args, "cadence");
+        if (cadence != null) {
+          if ("dex".equals(type) && !List.of("1s", "1m", "5m").contains(cadence)) {
+            throw new IllegalArgumentException("DEX cadence must be 1s, 1m or 5m");
+          }
+          body.cadence(DatasetImportRequest.CadenceEnum.fromValue(cadence));
+        }
+        if ("cex".equals(type)) {
+          rejectFields(args, "network", "contract", "protocol", "version");
+          body.cex(new DatasetImportCexRequest().exchange(required(args, "exchange"))
+              .segment(DatasetImportCexRequest.SegmentEnum.fromValue(required(args, "segment")))
+              .dataType(DatasetImportCexRequest.DataTypeEnum.fromValue(required(args, "dataType"))));
+        } else {
+          rejectFields(args, "exchange", "segment", "dataType");
+          body.dex(new DatasetImportDexRequest()
+              .network(DatasetImportDexRequest.NetworkEnum.fromValue(required(args, "network")))
+              .id(DatasetImportDexRequest.IdEnum.fromValue(required(args, "protocol")))
+              .version(DatasetImportDexRequest.VersionEnum.fromValue(required(args, "version")))
+              .contract(required(args, "contract")));
+        }
+        DatasetImportResult result = service.importDataset(body);
         return text("Dataset import accepted. datasetId=" + result.datasetId() + " importId=" + result.importId()
             + " ingestJobId=" + result.jobId() + "\nPoll get_dataset_import with datasetId and importId.");
       } catch (Exception e) {
         return error("Failed to start dataset import: " + e.getMessage());
       }
     });
+  }
+
+  private static void rejectFields(Map<String, Object> args, String... names) {
+    for (String name : names) {
+      if (args.containsKey(name)) throw new IllegalArgumentException(name + " does not belong to this import type");
+    }
   }
 
   private static SyncToolSpecification listDatasets(BacktestingService service) {
@@ -422,6 +467,9 @@ public final class McpTools {
               if (e.getDescription() != null && !e.getDescription().isBlank()) {
                 sb.append(" — ").append(e.getDescription());
               }
+              sb.append(" | venueType=").append(e.getVenueType())
+                  .append(" | segments=").append(e.getSegments())
+                  .append(" | liveSegments=").append(e.getLiveSegments());
               sb.append('\n');
             });
             return text(sb.toString().stripTrailing());
@@ -436,7 +484,7 @@ public final class McpTools {
   private static SyncToolSpecification listInstruments(BacktestingService service) {
     Tool tool = Tool.builder()
         .name("list_instruments")
-        .description("List instruments available on a specific exchange, including data availability. "
+        .description("List CEX instruments available on an exchange, including data availability. For DEX use list_pools. "
             + "Call list_exchanges first to get a valid exchangeId. "
             + "Use the returned instrument ids with submit_backtest.")
         .inputSchema(schema(
@@ -460,6 +508,9 @@ public final class McpTools {
                 sb.append(" (last: ").append(i.getLastPrice()).append(')');
               }
               appendCoverage(sb, i);
+              if (i.getSymbol() != null) sb.append(" symbol=").append(i.getSymbol());
+              if (i.getSettle() != null) sb.append(" settle=").append(i.getSettle());
+              if (i.getVolume24h() != null) sb.append(" volume24h=").append(i.getVolume24h());
               sb.append('\n');
             });
             return text(sb.toString().stripTrailing());
@@ -469,6 +520,26 @@ public final class McpTools {
             return error("Failed to list instruments: " + e.getMessage());
           }
         });
+  }
+
+  private static SyncToolSpecification listPools(BacktestingService service) {
+    Tool tool = Tool.builder().name("list_pools")
+        .description("Discover DEX pools for a chain/protocol from list_exchanges. Returns the 50 highest-volume "
+            + "pools with at least USD 10,000 liquidity, refreshed hourly. Use id (pool address), not symbol, "
+            + "with start_live venueType=dex and type=kline. Valid unlisted pools may also run. "
+            + "Absent price, quote volume or creation time means unknown; volume24h is in quote tokens.")
+        .inputSchema(schema(Map.of("exchangeId", prop("string", "DEX chain id, e.g. robinhood"),
+            "segment", prop("string", "Protocol, e.g. uniswap-v3; defaults to the venue's first segment")),
+            List.of("exchangeId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        List<PoolDetail> pools = service.listPools(required(request.arguments(), "exchangeId"),
+            optional(request.arguments(), "segment"));
+        return text(new ApiClient().getObjectMapper().writeValueAsString(pools));
+      } catch (Exception e) {
+        return error("Failed to list pools: " + e.getMessage());
+      }
+    });
   }
 
   /**
@@ -508,15 +579,20 @@ public final class McpTools {
     Tool tool = Tool.builder().name(name)
         .description("Stream exactly one UTC hour of " + kind + " to a local file beneath the "
             + "server operator's configured download root, on the server running MCP rather than the "
-            + "caller's workstation. hour is YYYY-MM-DDTHH; format defaults "
+            + "caller's workstation. hour is YYYY-MM-DDTHH within the last 7 days; older hours return "
+            + "OUTSIDE_WINDOW and a suggested HTTP import call (method/path/body); translate its body "
+            + "into import_dataset arguments if you choose to import. Recent hours may be provisional or "
+            + "NOT_YET_AVAILABLE; honour Retry-After for that reason and 503 TEMPORARILY_UNAVAILABLE. "
+            + "NO_DATA means the stored hour has no rows. Lastra ts is microseconds; Parquet is milliseconds. format defaults "
             + "to lastra and may be parquet. outputPath is relative to that root; its parent must "
             + "already exist. Existing files are rejected unless overwrite=true. The response "
-            + "contains only the relative path and byte count, never binary data.")
+            + "contains the relative path, byte count, content type, timestamp unit and optional "
+            + "provisional-data status/through time, never binary data.")
         .inputSchema(schema(Map.of(
             "exchangeId", prop("string", "Exchange id, e.g. binance"),
             "base", prop("string", "Base asset symbol, e.g. BTC"),
             "quote", prop("string", "Quote asset symbol, e.g. USDT"),
-            "hour", prop("string", "UTC hour in YYYY-MM-DDTHH form, e.g. 2026-01-15T10"),
+            "hour", prop("string", "UTC hour in YYYY-MM-DDTHH form within the last 7 days"),
             "format", prop("string", "Optional output format: lastra (default) or parquet"),
             "outputPath", prop("string", "Relative output file beneath the configured download root"),
             "overwrite", prop("boolean", "Replace an existing regular file atomically; default false")),
@@ -532,13 +608,35 @@ public final class McpTools {
                 required(args, "quote"), required(args, "hour"), optional(args, "format"),
                 required(args, "outputPath"), optionalBoolean(args, "overwrite", false));
         return text("Downloaded " + result.format() + " segment. outputPath=" + result.outputPath()
-            + " bytes=" + result.bytes());
+            + " bytes=" + result.bytes() + " contentType=" + valueOrUnknown(result.contentType())
+            + " timestampUnit=" + valueOrUnknown(result.timestampUnit())
+            + " dataStatus=" + valueOrUnknown(result.dataStatus())
+            + " dataThrough=" + valueOrUnknown(result.dataThrough()));
       } catch (IllegalArgumentException | IllegalStateException e) {
         return error(e.getMessage());
+      } catch (QTSError e) {
+        return error(formatDownloadError(e));
       } catch (Exception e) {
         return error("Market-data download failed: " + e.getMessage());
       }
     });
+  }
+
+  private static String formatDownloadError(QTSError error) {
+    Map<String, Object> recovery = new LinkedHashMap<>();
+    error.getReason().ifPresent(value -> recovery.put("reason", value));
+    error.getNext().ifPresent(value -> recovery.put("next", value));
+    error.getResponseHeaders().flatMap(headers -> headers.firstValue("Retry-After"))
+        .ifPresent(value -> recovery.put("Retry-After", value));
+    String detail = "";
+    if (!recovery.isEmpty()) {
+      try {
+        detail = "\nRecovery: " + new ApiClient().getObjectMapper().writeValueAsString(recovery);
+      } catch (JsonProcessingException ignored) {
+        detail = "\nRecovery reason: " + error.getReason().orElse("unknown");
+      }
+    }
+    return "Market-data download failed: " + error.getMessage() + detail;
   }
 
   // ---- submit_backtest ----------------------------------------------------
@@ -1462,9 +1560,11 @@ public final class McpTools {
       try {
         Account account = service.getAccount();
         return text("Account tier: " + account.getTier() + "\n"
+            + "Key scopes (reported, not yet enforced): " + account.getScopes() + "\n"
             + "Datasets max: " + account.getMaxDatasets() + "\n"
             + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
             + "Maximum Cartesian sweep combinations: " + account.getMaxSweepCartesian() + "\n"
+            + "Maximum import range hours: " + account.getMaxImportRangeHours() + "\n"
             + "Shared storage max bytes: " + account.getMaxTotalStorageBytes());
       } catch (Exception e) {
         return error("Failed to read account limits: " + e.getMessage());
@@ -1494,7 +1594,9 @@ public final class McpTools {
 
   private static SyncToolSpecification startLive(BacktestingService service) {
     Tool tool = Tool.builder().name("start_live")
-        .description("Start a registered strategy on one centralized-exchange feed. A first run "
+        .description("Start a registered strategy on a CEX feed or one DEX pool. venueType defaults to cex. "
+            + "DEX requires type=kline and exactly one 0x pool address; omission and wildcards are invalid. "
+            + "Pick exchange/segment from list_exchanges liveSegments. A first run "
             + "begins in SANDBOX; a compilation starts directly in LIVE after an earlier run was "
             + "promoted and none were stopped for exceeding resource limits, unless sandbox=true "
             + "requests another trial. Recompiled strategies start in SANDBOX. "
@@ -1509,6 +1611,7 @@ public final class McpTools {
             + "get_account_usage first. This MCP exposes request/response tools, not WebSocket subscriptions.")
         .inputSchema(schema(mapOf(
             "strategyId", prop("string", "Previously compiled strategy id"),
+            "venueType", prop("string", "cex (default) or dex"),
             "exchange", prop("string", "Exchange id, e.g. binance"),
             "segment", prop("string", "Market segment, e.g. spot"),
             "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
@@ -1527,7 +1630,10 @@ public final class McpTools {
       try {
         Map<String, Object> args = request.arguments();
         Object rawInstruments = args.get("instruments");
-        LiveSourceRequest source = new LiveSourceRequest().venueType("cx")
+        String venueType = optional(args, "venueType") == null ? "cex"
+            : required(args, "venueType").trim().toLowerCase(Locale.ROOT);
+        LiveSourceRequest source = new LiveSourceRequest()
+            .venueType(LiveSourceRequest.VenueTypeEnum.fromValue(venueType))
             .exchange(required(args, "exchange")).segment(required(args, "segment"))
             .type(LiveSourceRequest.TypeEnum.fromValue(optional(args, "type") == null
                 ? "ticker" : required(args, "type")))
@@ -1539,6 +1645,11 @@ public final class McpTools {
             throw new IllegalArgumentException("instruments must be a non-empty array of strings when provided");
           }
           source.instruments(values.stream().map(String.class::cast).toList());
+        }
+        if ("dex".equals(venueType) && (source.getType() != LiveSourceRequest.TypeEnum.KLINE
+            || source.getInstruments() == null || source.getInstruments().size() != 1
+            || !source.getInstruments().get(0).trim().matches("(?i)0x[0-9a-f]{40}"))) {
+          throw new IllegalArgumentException("DEX sources require type=kline and exactly one 0x pool address (40 hexadecimal digits)");
         }
         StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
             .relay(optionalBoolean(args, "relay", false));

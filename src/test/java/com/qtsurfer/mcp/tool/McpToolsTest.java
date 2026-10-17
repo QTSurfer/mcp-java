@@ -8,14 +8,19 @@ import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
+import com.qtsurfer.mcp.model.MarketDataDownload;
+import com.qtsurfer.api.client.invoker.ApiException;
+import com.qtsurfer.api.sdk.errors.QTSDownloadError;
 import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.net.http.HttpHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,8 +59,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFortyThreeTools() {
-    assertThat(tools).hasSize(43);
+  void registersExactlyFortyFourTools() {
+    assertThat(tools).hasSize(44);
   }
 
   @Test
@@ -63,7 +68,7 @@ class McpToolsTest {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
         "version", "compile_strategy", "upload_dataset", "import_dataset", "list_datasets", "get_dataset", "get_dataset_upload", "get_dataset_import",
-        "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "download_tickers",
+        "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "list_pools", "download_tickers",
         "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
@@ -76,7 +81,8 @@ class McpToolsTest {
   void accountToolsExposeLimitsAndSharedUsage() {
     assertThat(textOf(call("get_account", Map.of())))
         .contains("Account tier: free", "Shared storage max bytes: 10000000",
-            "Maximum Cartesian sweep combinations: 10000");
+            "Maximum Cartesian sweep combinations: 10000", "Maximum import range hours: 168",
+            "Key scopes (reported, not yet enforced):", "exchanges=[read]");
     assertThat(textOf(call("get_account_usage", Map.of())))
         .contains("Current account usage", "Shared storage: 0 bytes");
   }
@@ -131,6 +137,63 @@ class McpToolsTest {
     assertThat(started).contains("Stage: SANDBOX");
     assertThat(service.getLive(strategyId).getSources()).hasSize(1);
     assertThat(service.getLastStartLiveRequest().getSources().get(0).getInstruments()).isNull();
+    assertThat(service.getLastStartLiveRequest().getSources().get(0).getVenueType().getValue()).isEqualTo("cex");
+  }
+
+  @Test
+  void startLiveDexRequiresOnePoolAddressAndKlines() {
+    String strategyId = service.compileStrategy("public class DexDemo {}").strategyId();
+    Map<String, Object> args = new HashMap<>(Map.of("strategyId", strategyId,
+        "venueType", "dex", "exchange", "robinhood", "segment", "uniswap-v3"));
+    assertThat(call("start_live", args).isError()).isTrue();
+    args.put("type", "kline");
+    args.put("instruments", List.of("*"));
+    assertThat(call("start_live", args).isError()).isTrue();
+    args.put("instruments", List.of("0x0000000000000000000000000000000000000001"));
+    assertThat(call("start_live", args).isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(service.getLastStartLiveRequest().getSources().get(0).getVenueType().getValue()).isEqualTo("dex");
+  }
+
+  @Test
+  void cexImportsUseTypedBlockAndExpandedCadence() {
+    var result = call("import_dataset", Map.of("name", "BTC history", "instrument", "BTC/USDT",
+        "from", "2026-10-01T00:00:00Z", "to", "2026-10-02T00:00:00Z", "type", "cex",
+        "exchange", "binance", "segment", "spot", "dataType", "klines", "cadence", "3m"));
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    var body = service.getLastDatasetImportRequest();
+    assertThat(body.getType().getValue()).isEqualTo("cex");
+    assertThat(body.getCadence().getValue()).isEqualTo("3m");
+    assertThat(body.getCex().getExchange()).isEqualTo("binance");
+    assertThat(body.getDex()).isNull();
+  }
+
+  @Test
+  void poolDiscoveryReturnsActualPoolFields() {
+    String result = textOf(call("list_pools", Map.of("exchangeId", "robinhood", "segment", "uniswap-v3")));
+    assertThat(result).contains("\"id\":\"0x", "\"symbol\":\"WETH/USDC\"", "\"baseAddress\"",
+        "\"quoteAddress\"", "\"feePercent\"", "\"tvlUsd\"", "\"volume24hUsd\"");
+    assertThat(textOf(call("list_exchanges", Map.of()))).contains("venueType=dex", "liveSegments=[uniswap-v3]");
+  }
+
+  @Test
+  void downloadErrorsExposeStructuredRecoveryWithoutSendingIt() {
+    tools = McpTools.build(new BacktestingServiceStub() {
+      @Override
+      public MarketDataDownload downloadTickers(String exchangeId, String base, String quote,
+          String hour, String format, String outputPath, boolean overwrite) {
+        throw new QTSDownloadError("Use dataset import", new ApiException(400, "outside window",
+            HttpHeaders.of(Map.of("Retry-After", List.of("30")), (key, value) -> true), """
+                {"message":"Use an import","reason":"OUTSIDE_WINDOW",
+                "next":{"method":"POST","path":"/datasets/imports","body":{"type":"cex"}}}
+                """));
+      }
+    }, "https://api.qtsurfer.net/v1");
+    var result = call("download_tickers", Map.of("exchangeId", "binance", "base", "BTC",
+        "quote", "USDT", "hour", "2026-01-15T10", "outputPath", "btc.lastra"));
+    assertThat(result.isError()).isTrue();
+    assertThat(textOf(result)).contains("\"reason\":\"OUTSIDE_WINDOW\"", "\"next\":{",
+        "\"method\":\"POST\"", "\"path\":\"/datasets/imports\"", "\"body\":{\"type\":\"cex\"}",
+        "\"Retry-After\":\"30\"");
   }
 
   @Test
@@ -172,9 +235,11 @@ class McpToolsTest {
         .contains("CSV needs a header", "timestamp and close", "get_dataset_upload", "READY",
             "submit_backtest or submit_sweep");
     assertThat(tool("download_tickers").tool().description())
-        .contains("server running MCP", "lastra and may be parquet", "relative path and byte count");
+        .contains("server running MCP", "lastra and may be parquet", "relative path, byte count",
+            "timestamp unit", "provisional-data status/through time");
     assertThat(tool("download_klines").tool().description())
-        .contains("server running MCP", "lastra and may be parquet", "relative path and byte count");
+        .contains("server running MCP", "lastra and may be parquet", "relative path, byte count",
+            "timestamp unit", "provisional-data status/through time");
     assertThat(tool("get_strategy").tool().description())
         .contains("compile_strategy, submit_backtest, submit_sweep, or list_strategies");
     assertThat(tool("delete_strategy").tool().description())

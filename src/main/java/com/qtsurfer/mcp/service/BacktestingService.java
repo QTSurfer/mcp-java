@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.model.DatasetImportRequest;
+import com.qtsurfer.api.client.model.PoolDetail;
+
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.ExecuteSweepAccepted;
 import com.qtsurfer.api.client.model.ExecuteSweepResult;
@@ -86,6 +89,9 @@ public interface BacktestingService {
   DatasetImportResult importDataset(String name, String instrument, String from, String to,
       String network, String protocol, String version, String contract);
 
+  /** Start a typed CEX or DEX history import with an optional cadence. */
+  DatasetImportResult importDataset(DatasetImportRequest request);
+
   /** Read one external import's fetch and ingest state. */
   Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId);
 
@@ -103,6 +109,9 @@ public interface BacktestingService {
 
   /** List instruments, optionally restricted to one platform market segment. */
   List<InstrumentDetail> listInstruments(String exchangeId, String segment);
+
+  /** List ranked DEX pools, optionally selecting a protocol from the venue's segments. */
+  List<PoolDetail> listPools(String exchangeId, String segment);
 
   /** Stream one hourly ticker segment to a guarded local output file. */
   MarketDataDownload downloadTickers(

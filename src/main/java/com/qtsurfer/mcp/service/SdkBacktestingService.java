@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.binary.BinaryDownload;
+import com.qtsurfer.api.client.model.PoolDetail;
+
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.EquityCurveResult;
 import com.qtsurfer.api.client.model.CreateDatasetRequest;
@@ -319,9 +322,14 @@ public class SdkBacktestingService implements BacktestingService {
         .contract(contract)
         .id(DatasetImportDexRequest.IdEnum.valueOf(protocol.toUpperCase()))
         .version(DatasetImportDexRequest.VersionEnum.valueOf(version.toUpperCase()));
-    DatasetImportCreated created = qts.importDataset(new DatasetImportRequest()
+    return importDataset(new DatasetImportRequest()
         .name(name).instrument(instrument).from(OffsetDateTime.parse(from)).to(OffsetDateTime.parse(to))
         .type(DatasetImportRequest.TypeEnum.DEX).dex(dex));
+  }
+
+  @Override
+  public DatasetImportResult importDataset(DatasetImportRequest request) {
+    DatasetImportCreated created = qts.importDataset(request);
     return new DatasetImportResult(created.getDatasetId(), created.getImportId(), created.getJobId(),
         String.valueOf(created.getStatus()));
   }
@@ -381,6 +389,12 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   @Override
+  public List<PoolDetail> listPools(String exchangeId, String segment) {
+    return segment == null || segment.isBlank()
+        ? qts.getPools(exchangeId) : qts.getPools(exchangeId, segment);
+  }
+
+  @Override
   public MarketDataDownload downloadTickers(
       String exchangeId, String base, String quote, String hour, String format,
       String outputPath, boolean overwrite) {
@@ -409,10 +423,10 @@ public class SdkBacktestingService implements BacktestingService {
     } catch (IOException e) {
       throw new IllegalStateException("Could not create guarded download output", e);
     }
-    try (InputStream input = tickers
-        ? qts.downloadTickers(exchangeId, base, quote, hour, downloadFormat)
-        : qts.downloadKlines(exchangeId, base, quote, hour, downloadFormat)) {
-      long bytes = Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING);
+    try (BinaryDownload response = tickers
+        ? qts.downloadTickersWithMetadata(exchangeId, base, quote, hour, downloadFormat)
+        : qts.downloadKlinesWithMetadata(exchangeId, base, quote, hour, downloadFormat)) {
+      long bytes = Files.copy(response.body(), temporary, StandardCopyOption.REPLACE_EXISTING);
       if (overwrite) {
         Files.move(temporary, output, StandardCopyOption.REPLACE_EXISTING,
             StandardCopyOption.ATOMIC_MOVE);
@@ -420,7 +434,9 @@ public class SdkBacktestingService implements BacktestingService {
         Files.move(temporary, output, StandardCopyOption.ATOMIC_MOVE);
       }
       return new MarketDataDownload(Path.of(outputPath).normalize().toString(), bytes,
-          downloadFormat.wire().wireValue());
+          downloadFormat.wire().wireValue(), response.contentType().orElse(null),
+          response.timestampUnit().orElse(null), response.dataStatus().orElse(null),
+          response.dataThrough().orElse(null));
     } catch (IOException e) {
       throw new IllegalStateException("Could not stream market-data download to guarded output", e);
     } finally {
