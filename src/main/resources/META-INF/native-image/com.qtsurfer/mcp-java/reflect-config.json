@@ -150,6 +150,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.LivePaperConfig$AccountsEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.LivePaperConfig$FeeLegEnum",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

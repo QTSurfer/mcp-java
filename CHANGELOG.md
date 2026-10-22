@@ -4,6 +4,21 @@ All notable changes to `com.qtsurfer:mcp-java` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] — 2026-10-23
+
+### Added ✨
+
+- Show inferred dataset `type` in dataset summaries so callers can confirm a ready upload is
+  `klines` before submitting a user-data kline backtest.
+- Surface the API's `retryable` job-state flag in job status responses when present.
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.34.0 (OpenAPI 0.128.46). User datasets can run kline backtests only
+  when the selected ready version has `type=klines`; upload types are resolved at ingest completion.
+- Report API-key scopes as enforced per protected operation, with a `403 insufficient_scope`
+  response naming the missing grant.
+
 ## [0.20.0] — 2026-10-17
 
 ### Added ✨

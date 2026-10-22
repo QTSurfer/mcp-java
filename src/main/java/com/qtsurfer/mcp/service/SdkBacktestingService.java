@@ -355,12 +355,14 @@ public class SdkBacktestingService implements BacktestingService {
 
   private static DatasetSummary datasetSummary(Dataset dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
+        dataset.getType() == null ? null : dataset.getType().getValue(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
         dataset.getCadence(), null, stringify(dataset.getDeletedAt()));
   }
 
   private static DatasetSummary datasetSummary(DatasetWithLinks dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
+        dataset.getType() == null ? null : dataset.getType().getValue(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
         dataset.getCadence(), stringify(dataset.getDataFormat()), stringify(dataset.getDeletedAt()));
   }
@@ -559,7 +561,8 @@ public class SdkBacktestingService implements BacktestingService {
     String startedAt = state != null && state.getStartTime() != null
         ? state.getStartTime().toString() : "unknown";
     return Optional.of(
-        new JobSummary(jobId, instrument, exchangeId, status, startedAt, result));
+        new JobSummary(jobId, instrument, exchangeId, status, startedAt, result,
+            state == null ? null : state.getRetryable()));
   }
 
   private static JobResult toJobResult(ResultMap r) {

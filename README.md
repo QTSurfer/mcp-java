@@ -84,7 +84,9 @@ If `QTSURFER_APIKEY` is missing or the initial exchange returns 401, the
 server exits non-zero with a clear error before exposing any tools. A deployment
 that requires scopes returns 403 `apikey_without_scopes` for a key with none;
 create a key with at least one resource/action scope in the web app and update
-the MCP client's environment before restarting.
+the MCP client's environment before restarting. Protected tools also return 403
+`insufficient_scope` when the key lacks a specific operation grant; add the named
+`resource:action` scope and obtain a new token before retrying.
 
 ### Claude Code (`~/.claude.json`)
 
@@ -175,7 +177,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `download_tickers` / `download_klines` | Stream one recent UTC-hour segment into a guarded local file; return path, byte count and timestamp/provisional metadata |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
 | `storeSignals` | Optional on selected `submit_backtest` or `submit_sweep` calls; disabled by default because retained signals consume storage quota |
-| `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId` |
+| `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId`; failed states may include `retryable` |
 | `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
 | `list_jobs` | List jobs from the current session, optionally filtered by status |
 | `submit_sweep` | Run one strategy across a parameter grid on an instrument or ready dataset, optionally walk-forward validated; returns a sweep ID |
@@ -209,8 +211,8 @@ needs the retained signal history, and check usage again before enabling it for 
 The empty argument object above is the input to either account tool.
 
 `get_account` also reports the API key's resource-to-actions `scopes` map. An empty map
-means no grants. The API reports per-operation scopes without enforcing them, though a deployment
-can require at least one scope when the MCP server exchanges its key for a token.
+means no grants. The API enforces each protected operation's required scope and returns
+`403 insufficient_scope` with the missing `resource:action` grant.
 
 ### Venue and pool discovery
 
@@ -341,9 +343,12 @@ docker run -i --rm -e QTSURFER_APIKEY \
   ghcr.io/qtsurfer/mcp-java:latest
 ```
 
-Once `get_dataset_upload` returns `READY`, submit a run with `datasetId`; omit `exchangeId` and
-`instrument`, because MCP derives the reserved `exchangeId=user`. `datasetVersionId` pins a prior
-ready version. `equityCurve` is accepted by both run tools and is passed through to the API.
+Once `get_dataset_upload` returns `READY`, inspect `type` with `get_dataset`, then submit a run with
+`datasetId`; omit `exchangeId` and `instrument`, because MCP derives the reserved `exchangeId=user`.
+`datasetVersionId` pins a prior ready version. User-data kline backtests require the selected ready
+version to have `type=klines`; ticker backtests accept either type. An uploaded version's type is
+inferred from its rows when ingest completes. `equityCurve` is accepted by both run tools and is
+passed through to the API.
 
 ### Import market history
 

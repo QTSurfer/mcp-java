@@ -316,7 +316,9 @@ public final class McpTools {
 
   private static SyncToolSpecification getDataset(BacktestingService service) {
     Tool tool = Tool.builder().name("get_dataset")
-        .description("Read metadata and current ready version for one caller-owned dataset.")
+        .description("Read metadata, current ready version, and resolved dataset type for one "
+            + "caller-owned dataset. A user-data kline backtest requires type=klines; prepare "
+            + "rejects other dataset types before queueing.")
         .inputSchema(schema(Map.of("datasetId", prop("string", "Dataset id")), List.of("datasetId"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       String datasetId = required(request.arguments(), "datasetId");
@@ -405,6 +407,7 @@ public final class McpTools {
 
   private static String formatDataset(DatasetSummary dataset) {
     return "Dataset " + dataset.datasetId() + ": " + dataset.name() + " | instrument=" + dataset.instrument()
+        + " | type=" + valueOrUnknown(dataset.type())
         + " | currentVersion=" + valueOrUnknown(dataset.currentVersionId()) + " | range="
         + valueOrUnknown(dataset.from()) + " → " + valueOrUnknown(dataset.to()) + " | cadence="
         + valueOrUnknown(dataset.cadence()) + " | dataFormat=" + valueOrUnknown(dataset.dataFormat())
@@ -647,6 +650,7 @@ public final class McpTools {
         .description("Compile a Java strategy and queue a backtesting run on QTSurfer. "
             + "Returns the job ID immediately — poll with get_job_status. "
             + "Provide either exchangeId plus instrument, or datasetId (the server derives exchangeId=user). "
+            + "For a user-data kline run, the selected ready dataset version must have type=klines; ticker runs accept either type. "
             + "Set storeSignals only for selected runs that need emitted signals: it is disabled by default "
             + "and retained signals consume the account's storage quota. "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
@@ -697,6 +701,7 @@ public final class McpTools {
     Tool tool = Tool.builder()
         .name("get_job_status")
         .description("Get the current status of a backtesting job. "
+            + "A failed job may include retryable, indicating whether the same request can succeed on retry. "
             + "A job submitted by this server in this session is answered from its own state and "
             + "needs nothing but the jobId. Any other job id — from the web app, another session, "
             + "or this server before a restart — is read straight off the platform, which "
@@ -724,7 +729,7 @@ public final class McpTools {
             return service.getJobStatus(jobId, exchangeId)
                 .map(j -> {
                   String body = formatJobStatus(j.jobId(), j.instrument(), j.exchangeId(),
-                      j.status(), j.submittedAt(), j.result());
+                      j.status(), j.submittedAt(), j.result(), j.retryable());
                   if (includeCurve && j.result() != null
                       && j.result().equityCurve() != null && !j.result().equityCurve().isEmpty()) {
                     body += "\n\nEquity curve:\n"
@@ -1560,7 +1565,7 @@ public final class McpTools {
       try {
         Account account = service.getAccount();
         return text("Account tier: " + account.getTier() + "\n"
-            + "Key scopes (reported, not yet enforced): " + account.getScopes() + "\n"
+            + "Key scopes (enforced per protected operation): " + account.getScopes() + "\n"
             + "Datasets max: " + account.getMaxDatasets() + "\n"
             + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
             + "Maximum Cartesian sweep combinations: " + account.getMaxSweepCartesian() + "\n"
@@ -2058,11 +2063,13 @@ public final class McpTools {
   // ---- formatting ---------------------------------------------------------
 
   private static String formatJobStatus(String jobId, String instrument, String exchangeId,
-                                        JobStatus status, String submittedAt, JobResult result) {
+                                        JobStatus status, String submittedAt, JobResult result,
+                                        Boolean retryable) {
     StringBuilder sb = new StringBuilder();
     sb.append("Job ").append(jobId).append(": ").append(status).append('\n');
     sb.append("Exchange: ").append(exchangeId).append(" | Instrument: ").append(instrument).append('\n');
     sb.append("Submitted: ").append(submittedAt);
+    if (retryable != null) sb.append("\nRetryable: ").append(retryable);
 
     if (result != null) {
       sb.append("\n\n=== Results ===\n");

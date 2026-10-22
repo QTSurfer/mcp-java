@@ -5,6 +5,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import com.qtsurfer.mcp.model.EquityPoint;
+import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
 import com.qtsurfer.mcp.model.JobSummary;
@@ -82,7 +83,7 @@ class McpToolsTest {
     assertThat(textOf(call("get_account", Map.of())))
         .contains("Account tier: free", "Shared storage max bytes: 10000000",
             "Maximum Cartesian sweep combinations: 10000", "Maximum import range hours: 168",
-            "Key scopes (reported, not yet enforced):", "exchanges=[read]");
+            "Key scopes (enforced per protected operation):", "exchanges=[read]");
     assertThat(textOf(call("get_account_usage", Map.of())))
         .contains("Current account usage", "Shared storage: 0 bytes");
   }
@@ -450,6 +451,35 @@ class McpToolsTest {
         "get_job_status", Map.of("jobId", "bt-metrics"));
 
     assertThat(text).contains("win rate: 60.0%").contains("CAGR:         15.00%");
+  }
+
+  @Test
+  void getJobStatusShowsRetryabilityWhenTheApiProvidesIt() {
+    BacktestingServiceStub stub = new BacktestingServiceStub() {
+      @Override
+      public Optional<JobSummary> getJobStatus(String jobId, String exchangeId) {
+        if (!"bt-retryable".equals(jobId)) return super.getJobStatus(jobId, exchangeId);
+        return Optional.of(new JobSummary("bt-retryable", "BTC/USDT", "binance",
+            JobStatus.FAILED, "2026-10-23T00:00:00Z", null, true));
+      }
+    };
+    assertThat(callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
+        "get_job_status", Map.of("jobId", "bt-retryable")))
+        .contains("Retryable: true");
+  }
+
+  @Test
+  void getDatasetShowsTheResolvedTypeForBacktestSelection() {
+    BacktestingServiceStub stub = new BacktestingServiceStub() {
+      @Override
+      public Optional<DatasetSummary> getDataset(String datasetId) {
+        return Optional.of(new DatasetSummary(datasetId, "BTC candles", "BTC/USDT", "klines",
+            "version-1", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", "1m", "CSV", null));
+      }
+    };
+    assertThat(callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
+        "get_dataset", Map.of("datasetId", "dataset-1")))
+        .contains("type=klines");
   }
 
   // ---- cancel_backtest ------------------------------------------------------

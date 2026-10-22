@@ -12,7 +12,13 @@ package com.qtsurfer.mcp.model;
  */
 public record JobSummary(
     String jobId, String instrument, String exchangeId, JobStatus status,
-    String submittedAt, JobResult result) {
+    String submittedAt, JobResult result, Boolean retryable) {
+
+  /** Preserve the original completed-job constructor. */
+  public JobSummary(String jobId, String instrument, String exchangeId, JobStatus status,
+      String submittedAt, JobResult result) {
+    this(jobId, instrument, exchangeId, status, submittedAt, result, null);
+  }
 
   /** Convenience constructor for jobs that have not yet completed. */
   public JobSummary(String jobId, String instrument, String exchangeId,
@@ -26,6 +32,7 @@ public record JobSummary(
         + " instrument=" + instrument
         + " exchange=" + exchangeId
         + " status=" + status
-        + " submitted=" + submittedAt;
+        + " submitted=" + submittedAt
+        + (retryable == null ? "" : " retryable=" + retryable);
   }
 }
