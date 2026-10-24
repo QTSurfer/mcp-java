@@ -650,7 +650,8 @@ public final class McpTools {
         .description("Compile a Java strategy and queue a backtesting run on QTSurfer. "
             + "Returns the job ID immediately — poll with get_job_status. "
             + "Provide either exchangeId plus instrument, or datasetId (the server derives exchangeId=user). "
-            + "For a user-data kline run, the selected ready dataset version must have type=klines; ticker runs accept either type. "
+            + "A run is prepared as ticker data and a dataset of either type is accepted for it; this tool "
+            + "cannot request a kline run, so a strategy that reads kline data ends FAILED with the platform's reason. "
             + "Set storeSignals only for selected runs that need emitted signals: it is disabled by default "
             + "and retained signals consume the account's storage quota. "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
@@ -701,7 +702,8 @@ public final class McpTools {
     Tool tool = Tool.builder()
         .name("get_job_status")
         .description("Get the current status of a backtesting job. "
-            + "A failed job may include retryable, indicating whether the same request can succeed on retry. "
+            + "A failed job may include retryable, indicating whether the same request can succeed on retry, "
+            + "and Detail, the reason the platform gave for ending the run without a result. "
             + "A job submitted by this server in this session is answered from its own state and "
             + "needs nothing but the jobId. Any other job id — from the web app, another session, "
             + "or this server before a restart — is read straight off the platform, which "
@@ -729,7 +731,7 @@ public final class McpTools {
             return service.getJobStatus(jobId, exchangeId)
                 .map(j -> {
                   String body = formatJobStatus(j.jobId(), j.instrument(), j.exchangeId(),
-                      j.status(), j.submittedAt(), j.result(), j.retryable());
+                      j.status(), j.submittedAt(), j.result(), j.retryable(), j.statusDetail());
                   if (includeCurve && j.result() != null
                       && j.result().equityCurve() != null && !j.result().equityCurve().isEmpty()) {
                     body += "\n\nEquity curve:\n"
@@ -2064,12 +2066,13 @@ public final class McpTools {
 
   private static String formatJobStatus(String jobId, String instrument, String exchangeId,
                                         JobStatus status, String submittedAt, JobResult result,
-                                        Boolean retryable) {
+                                        Boolean retryable, String statusDetail) {
     StringBuilder sb = new StringBuilder();
     sb.append("Job ").append(jobId).append(": ").append(status).append('\n');
     sb.append("Exchange: ").append(exchangeId).append(" | Instrument: ").append(instrument).append('\n');
     sb.append("Submitted: ").append(submittedAt);
     if (retryable != null) sb.append("\nRetryable: ").append(retryable);
+    if (statusDetail != null && !statusDetail.isBlank()) sb.append("\nDetail: ").append(statusDetail);
 
     if (result != null) {
       sb.append("\n\n=== Results ===\n");

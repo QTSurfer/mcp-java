@@ -53,6 +53,7 @@ import com.qtsurfer.api.sdk.SweepRequest;
 import com.qtsurfer.api.sdk.UpdateLiveParamsRequestBuilder;
 import com.qtsurfer.api.sdk.ValidationOutcome;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
+import com.qtsurfer.api.sdk.errors.QTSCanceledError;
 import com.qtsurfer.mcp.model.EquityPoint;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.DatasetUploadResult;
@@ -80,6 +81,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -197,19 +199,59 @@ public class SdkBacktestingService implements BacktestingService {
       String submittedAt,
       CompletableFuture<Void> future,
       Backtest backtest,
-      AtomicReference<ResultMap> resultRef) {
+      AtomicReference<ResultMap> resultRef,
+      AtomicReference<Failure> failure) {
 
     JobStatus status() {
-      if (future.isCompletedExceptionally()) return JobStatus.FAILED;
-      if (future.isDone()) return JobStatus.COMPLETED;
-      if (backtest == null) return JobStatus.COMPILING;
-      return switch (backtest.state()) {
-        case EXECUTING -> JobStatus.EXECUTING;
-        case COMPLETED -> JobStatus.COMPLETED;
-        case FAILED    -> JobStatus.FAILED;
-        case CANCELED  -> JobStatus.CANCELED;
-      };
+      return resolveStatus(failure.get(), future.isCompletedExceptionally(), future.isDone(),
+          backtest == null ? null : backtest.state());
     }
+
+    /** The platform's reason when the run ended badly, otherwise {@code null}. */
+    String failureDetail() {
+      Failure f = failure.get();
+      return f == null ? null : f.detail();
+    }
+  }
+
+  /** How a submitted run ended when it did not complete, and the reason the platform gave. */
+  record Failure(JobStatus status, String detail) {}
+
+  /**
+   * The lifecycle state of a submitted run.
+   *
+   * <p>The await future is not a reliable signal on its own: the failure is observed and recorded
+   * as a {@link Failure} so the future itself can complete normally, which made a run whose
+   * preparation was rejected read as {@link JobStatus#COMPLETED}. A recorded failure therefore
+   * decides first, then a cancellation the SDK has already marked, and only a future that is done
+   * with neither is a completed run.
+   *
+   * @param failure     the failure recorded when the await future ended badly, or {@code null}
+   * @param exceptional whether the future itself completed exceptionally
+   * @param done        whether the future is done
+   * @param state       the SDK's local snapshot, or {@code null} while the strategy compiles
+   */
+  static JobStatus resolveStatus(
+      Failure failure, boolean exceptional, boolean done, Backtest.State state) {
+    if (failure != null) return failure.status();
+    if (exceptional) return JobStatus.FAILED;
+    if (state == Backtest.State.CANCELED) return JobStatus.CANCELED;
+    if (done) return JobStatus.COMPLETED;
+    if (state == null) return JobStatus.COMPILING;
+    return switch (state) {
+      case EXECUTING -> JobStatus.EXECUTING;
+      case COMPLETED -> JobStatus.COMPLETED;
+      case FAILED    -> JobStatus.FAILED;
+      case CANCELED  -> JobStatus.CANCELED;
+    };
+  }
+
+  /** Whether an await failure is the run being cancelled rather than failing. */
+  static boolean isCancellation(Throwable error) {
+    for (Throwable t = error; t != null; t = t.getCause()) {
+      if (t instanceof QTSCanceledError || t instanceof CancellationException) return true;
+    }
+    return false;
   }
 
   /** Session provenance required to address a retained curve through the SDK. */
@@ -336,13 +378,12 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId) {
-    try {
-      DatasetImportState state = qts.getDatasetImport(datasetId, importId);
-      return Optional.of(new DatasetImportStatus(datasetId, state.getImportId(), String.valueOf(state.getStatus()),
-          state.getJobId(), state.getError(), state.getVersion() == null ? null : state.getVersion().getId()));
-    } catch (RuntimeException e) {
-      return Optional.empty();
-    }
+    // A failed read propagates: the tool reports its cause. Swallowing it here read every error,
+    // a body the client could not parse included, as an import that does not exist.
+    DatasetImportState state = qts.getDatasetImport(datasetId, importId);
+    if (state == null) return Optional.empty();
+    return Optional.of(new DatasetImportStatus(datasetId, state.getImportId(), String.valueOf(state.getStatus()),
+        state.getJobId(), state.getError(), state.getVersion() == null ? null : state.getVersion().getId()));
   }
 
   private Path guardedUploadFile(String filePath) {
@@ -481,20 +522,29 @@ public class SdkBacktestingService implements BacktestingService {
     String submittedAt = Instant.now().toString();
     String finalJobId = jobId;
     AtomicReference<ResultMap> resultRef = new AtomicReference<>();
+    AtomicReference<Failure> failureRef = new AtomicReference<>();
 
-    // Track the await future; capture ResultMap when execution completes
+    // Track the await future; capture ResultMap when execution completes. A failure is kept, not
+    // just logged: this future completes normally either way, so the job's status reads it back.
     CompletableFuture<Void> future = backtest.await()
         .thenAccept(sdkResult -> {
           resultRef.set(sdkResult);
           log.info("Job {} completed — pnl={} trades={}", finalJobId,
               sdkResult.getPnlTotal(), sdkResult.getTotalTrades());
         })
-        .exceptionally(err -> { log.warn("Job {} failed: {}", finalJobId, rootMessage(err)); return null; });
+        .exceptionally(err -> {
+          String detail = rootMessage(err);
+          failureRef.set(new Failure(
+              isCancellation(err) ? JobStatus.CANCELED : JobStatus.FAILED, detail));
+          log.warn("Job {} ended without a result: {}", finalJobId, detail);
+          return null;
+        });
 
     String source = sdkRequest.datasetId() == null ? sdkRequest.instrument()
         : "dataset:" + sdkRequest.datasetId()
             + (sdkRequest.datasetVersionId() == null ? "" : ":" + sdkRequest.datasetVersionId());
-    jobs.put(jobId, new SessionJob(jobId, source, sdkRequest.exchangeId(), submittedAt, future, backtest, resultRef));
+    jobs.put(jobId, new SessionJob(
+        jobId, source, sdkRequest.exchangeId(), submittedAt, future, backtest, resultRef, failureRef));
     log.info("Submitted backtest {} ({} {} {} → {})", jobId, sdkRequest.exchangeId(), source,
         sdkRequest.from(), sdkRequest.to());
     return jobId;
@@ -510,7 +560,7 @@ public class SdkBacktestingService implements BacktestingService {
     ResultMap sdkResult = job.resultRef().get();
     JobResult result = sdkResult != null ? toJobResult(sdkResult) : null;
     return Optional.of(new JobSummary(job.jobId(), job.instrument(), job.exchangeId(),
-        job.status(), job.submittedAt(), result));
+        job.status(), job.submittedAt(), result, null, job.failureDetail()));
   }
 
   /**
@@ -560,9 +610,13 @@ public class SdkBacktestingService implements BacktestingService {
         ? results.getInstrument() : "unknown";
     String startedAt = state != null && state.getStartTime() != null
         ? state.getStartTime().toString() : "unknown";
+    // The platform's reason only means something for a run that ended without a result; a
+    // completed one can carry an informational detail that would read as an error.
+    String detail = state != null && (status == JobStatus.FAILED || status == JobStatus.CANCELED)
+        ? state.getStatusDetail() : null;
     return Optional.of(
         new JobSummary(jobId, instrument, exchangeId, status, startedAt, result,
-            state == null ? null : state.getRetryable()));
+            state == null ? null : state.getRetryable(), detail));
   }
 
   private static JobResult toJobResult(ResultMap r) {

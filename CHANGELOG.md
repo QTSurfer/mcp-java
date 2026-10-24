@@ -14,6 +14,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   dataset import carries was missing too, so `get_dataset_import` answered "Dataset import not
   found". The enums of `Dataset` and `DatasetVersion` and the equity-curve request types were
   missing as well.
+- `get_dataset_import` reports why a read failed instead of answering "Dataset import not found"
+  for every error.
+- `get_job_status` no longer reports a failed or cancelled run as `COMPLETED`. The status now
+  reads the failure the run ended with and shows the platform's reason as `Detail`, for runs
+  submitted by this server and for runs read off the platform by `exchangeId`.
+- `submit_backtest` says it prepares ticker data and cannot request a kline run; a strategy that
+  reads kline data ends `FAILED` with the platform's reason.
 
 ## [0.21.0] — 2026-10-23
 
