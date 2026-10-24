@@ -4,6 +4,17 @@ All notable changes to `com.qtsurfer:mcp-java` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed 🐛
+
+- Native binary: register the types it could not deserialize. The API's `segments` and
+  `liveSegments` are sets, which Jackson fills with a `HashSet` the native image had no
+  registration for, so `list_exchanges` failed with a bare `HTTP 0`. The `version` a finished
+  dataset import carries was missing too, so `get_dataset_import` answered "Dataset import not
+  found". The enums of `Dataset` and `DatasetVersion` and the equity-curve request types were
+  missing as well.
+
 ## [0.21.0] — 2026-10-23
 
 ### Added ✨

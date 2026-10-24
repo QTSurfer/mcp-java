@@ -1000,7 +1000,16 @@
   { "name": "com.qtsurfer.api.client.model.DatasetImportCreated$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.DatasetImportState", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.DatasetImportState$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetVersion", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetVersion$DataFormatEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetVersion$TimestampUnitEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.Dataset", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.Dataset$StatusEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.Dataset$TimestampUnitEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.Dataset$TypeEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.EquityCurveOptions", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.EquityCurveRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.EquityCurveRequest$ModeEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   { "name": "com.qtsurfer.api.client.model.ListDatasets200Response", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   {
     "name": "com.qtsurfer.api.client.model.ResponseError",
@@ -2294,6 +2303,15 @@
     "name": "java.util.Collection"
   },
   {
+    "name": "java.util.HashSet",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
     "name": "java.util.ImmutableCollections$AbstractImmutableCollection"
   },
   {
@@ -2313,6 +2331,15 @@
   },
   {
     "name": "java.util.ImmutableCollections$MapN"
+  },
+  {
+    "name": "java.util.LinkedHashSet",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
   },
   {
     "name": "java.util.List"
