@@ -50,6 +50,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * from rotting: every pinned name must still resolve, no pinned name may have become derivable,
  * and no {@code com.qtsurfer} entry may sit in the config without belonging to one set or the
  * other.
+ *
+ * <p>A pin is a root, not a leaf: {@link #deriveFromPins()} walks the fields and member types of
+ * every pinned class the same way, so a type that is only held by a pinned one is expected too.
  */
 class ReflectConfigTest {
 
@@ -188,6 +191,40 @@ class ReflectConfigTest {
         PINNED_WORKFLOW_INTERMEDIATES, readConfig());
   }
 
+  /**
+   * A pin names one class, but Jackson builds that class's whole object graph: every type held
+   * in one of its fields, and every enum nested in it. The pin does not carry those along, so
+   * they were never checked — {@code DatasetImportState} was pinned while the
+   * {@code DatasetVersion} it holds was not, and the native binary read every successful import
+   * as "not found".
+   */
+  @Test
+  void everyTypeHeldByAPinnedTypeIsRegistered() throws IOException {
+    assertMissing("held by a pinned type", deriveFromPins(), readConfig());
+  }
+
+  /**
+   * Jackson fills an abstract {@code Set} with a {@code HashSet} it constructs reflectively. Only
+   * the {@code uniqueItems} arrays of the API become sets (today {@code Exchange.segments} and
+   * {@code liveSegments}); every other collection is a {@code List}, so the missing registration
+   * showed up only once the API added those two fields — and made {@code list_exchanges} fail
+   * with {@code HTTP 0} for every caller.
+   */
+  @Test
+  void setImplementationsAreRegisteredWhenAnyTypeHoldsASet() throws IOException {
+    Set<String> holders = new TreeSet<>();
+    for (String name : allReachable()) {
+      for (Field field : load(name).getDeclaredFields()) {
+        if (Set.class.isAssignableFrom(field.getType())) holders.add(name + "." + field.getName());
+      }
+    }
+    Map<String, Set<String>> config = readConfig();
+    if (holders.isEmpty()) return;
+    assertThat(config.keySet())
+        .as("serialized fields typed Set %s need the concrete set Jackson instantiates", holders)
+        .contains("java.util.HashSet", "java.util.LinkedHashSet");
+  }
+
   // ---- keeping the pins honest ----------------------------------------------
 
   @Test
@@ -218,7 +255,7 @@ class ReflectConfigTest {
 
   @Test
   void noRegisteredQtsurferTypeIsUnaccountedFor() throws IOException {
-    Set<String> accounted = new LinkedHashSet<>(derive());
+    Set<String> accounted = new LinkedHashSet<>(allReachable());
     accounted.addAll(pinned());
     Set<String> stale = new TreeSet<>();
     for (String name : readConfig().keySet()) {
@@ -241,11 +278,48 @@ class ReflectConfigTest {
    * @return the fully qualified names, in {@code $}-nested form as reflect-config spells them
    */
   private static Set<String> derive() {
+    List<Type> roots = new ArrayList<>();
+    for (Method method : BacktestingService.class.getMethods()) {
+      roots.add(method.getGenericReturnType());
+    }
+    return walk(roots);
+  }
+
+  /**
+   * Every serialized type held by a pinned type: its fields and member types, transitively. The
+   * pinned types themselves are included, since they are walked as roots.
+   */
+  private static Set<String> deriveFromPins() {
+    List<Type> roots = new ArrayList<>();
+    for (String name : pinned()) {
+      try {
+        roots.add(Class.forName(name));
+      } catch (ClassNotFoundException e) {
+        // everyPinnedTypeStillExists reports it; nothing to walk here
+      }
+    }
+    return walk(roots);
+  }
+
+  /** Everything a tool can return plus everything a pinned type holds. */
+  private static Set<String> allReachable() {
+    Set<String> all = new TreeSet<>(derive());
+    all.addAll(deriveFromPins());
+    return all;
+  }
+
+  private static Class<?> load(String name) {
+    try {
+      return Class.forName(name);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException(name, e);
+    }
+  }
+
+  private static Set<String> walk(Iterable<? extends Type> roots) {
     Set<Class<?>> found = new LinkedHashSet<>();
     Deque<Type> pending = new ArrayDeque<>();
-    for (Method method : BacktestingService.class.getMethods()) {
-      pending.add(method.getGenericReturnType());
-    }
+    roots.forEach(pending::add);
     while (!pending.isEmpty()) {
       Class<?> type = rawType(pending.poll(), pending);
       if (type == null || !isSerialized(type) || !found.add(type)) continue;

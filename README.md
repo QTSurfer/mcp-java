@@ -345,9 +345,11 @@ docker run -i --rm -e QTSURFER_APIKEY \
 
 Once `get_dataset_upload` returns `READY`, inspect `type` with `get_dataset`, then submit a run with
 `datasetId`; omit `exchangeId` and `instrument`, because MCP derives the reserved `exchangeId=user`.
-`datasetVersionId` pins a prior ready version. User-data kline backtests require the selected ready
-version to have `type=klines`; ticker backtests accept either type. An uploaded version's type is
-inferred from its rows when ingest completes. `equityCurve` is accepted by both run tools and is
+`datasetVersionId` pins a prior ready version. A run is prepared as ticker data, which accepts a
+dataset of either type; this tool cannot yet request a kline run, so a strategy that reads kline
+data ends `FAILED` with the platform's reason (the API itself runs kline backtests only over a
+version with `type=klines`). An uploaded version's type is inferred from its rows when ingest
+completes. `equityCurve` is accepted by both run tools and is
 passed through to the API.
 
 ### Import market history

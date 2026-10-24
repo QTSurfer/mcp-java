@@ -4,6 +4,24 @@ All notable changes to `com.qtsurfer:mcp-java` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed 🐛
+
+- Native binary: register the types it could not deserialize. The API's `segments` and
+  `liveSegments` are sets, which Jackson fills with a `HashSet` the native image had no
+  registration for, so `list_exchanges` failed with a bare `HTTP 0`. The `version` a finished
+  dataset import carries was missing too, so `get_dataset_import` answered "Dataset import not
+  found". The enums of `Dataset` and `DatasetVersion` and the equity-curve request types were
+  missing as well.
+- `get_dataset_import` reports why a read failed instead of answering "Dataset import not found"
+  for every error.
+- `get_job_status` no longer reports a failed or cancelled run as `COMPLETED`. The status now
+  reads the failure the run ended with and shows the platform's reason as `Detail`, for runs
+  submitted by this server and for runs read off the platform by `exchangeId`.
+- `submit_backtest` says it prepares ticker data and cannot request a kline run; a strategy that
+  reads kline data ends `FAILED` with the platform's reason.
+
 ## [0.21.0] — 2026-10-23
 
 ### Added ✨

@@ -5,6 +5,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import com.qtsurfer.mcp.model.EquityPoint;
+import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.JobResult;
 import com.qtsurfer.mcp.model.JobStatus;
@@ -466,6 +467,38 @@ class McpToolsTest {
     assertThat(callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
         "get_job_status", Map.of("jobId", "bt-retryable")))
         .contains("Retryable: true");
+  }
+
+  @Test
+  void getDatasetImportReportsWhyAReadFailedInsteadOfNotFound() {
+    BacktestingServiceStub stub = new BacktestingServiceStub() {
+      @Override
+      public Optional<DatasetImportStatus> getDatasetImport(String datasetId, String importId) {
+        throw new RuntimeException("dataset import response could not be read");
+      }
+    };
+    String text = callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
+        "get_dataset_import", Map.of("datasetId", "ds_1", "importId", "imp_1"));
+
+    assertThat(text).contains("Failed to read dataset import").contains("could not be read")
+        .doesNotContain("not found");
+  }
+
+  @Test
+  void getJobStatusShowsWhyAFailedRunEndedWithoutResults() {
+    String reason = "This strategy reads kline data, but the run was submitted against ticker data.";
+    BacktestingServiceStub stub = new BacktestingServiceStub() {
+      @Override
+      public Optional<JobSummary> getJobStatus(String jobId, String exchangeId) {
+        if (!"bt-failed".equals(jobId)) return super.getJobStatus(jobId, exchangeId);
+        return Optional.of(new JobSummary("bt-failed", "dataset:ds_1", "user",
+            JobStatus.FAILED, "2026-10-23T00:00:00Z", null, null, reason));
+      }
+    };
+    String text = callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
+        "get_job_status", Map.of("jobId", "bt-failed"));
+
+    assertThat(text).contains("Job bt-failed: FAILED").contains("Detail: " + reason);
   }
 
   @Test
