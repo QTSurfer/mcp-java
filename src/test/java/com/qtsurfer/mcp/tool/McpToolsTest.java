@@ -5,6 +5,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import com.qtsurfer.mcp.model.EquityPoint;
+import com.qtsurfer.api.client.model.DataSourceType;
 import com.qtsurfer.mcp.model.DatasetImportStatus;
 import com.qtsurfer.mcp.model.DatasetSummary;
 import com.qtsurfer.mcp.model.JobResult;
@@ -467,6 +468,110 @@ class McpToolsTest {
     assertThat(callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"),
         "get_job_status", Map.of("jobId", "bt-retryable")))
         .contains("Retryable: true");
+  }
+
+  // ---- the data type of a run ---------------------------------------------------------
+
+  /** Records the request each submit tool hands to the service. */
+  private static final class RecordingStub extends BacktestingServiceStub {
+    com.qtsurfer.api.sdk.BacktestRequest backtest;
+    com.qtsurfer.api.sdk.SweepRequest sweep;
+    String statusExchange;
+    DataSourceType statusType;
+
+    @Override
+    public String submitBacktest(com.qtsurfer.api.sdk.BacktestRequest request) {
+      backtest = request;
+      return super.submitBacktest(request);
+    }
+
+    @Override
+    public com.qtsurfer.api.client.model.ExecuteSweepAccepted submitSweep(com.qtsurfer.api.sdk.SweepRequest request) {
+      sweep = request;
+      return super.submitSweep(request);
+    }
+
+    @Override
+    public Optional<JobSummary> getJobStatus(String jobId, String exchangeId, DataSourceType type) {
+      statusExchange = exchangeId;
+      statusType = type;
+      return super.getJobStatus(jobId, exchangeId);
+    }
+  }
+
+  private static final String STRATEGY = "public class S extends AbstractTickerStrategy {}";
+
+  @Test
+  void submitBacktestIsATickerRunUnlessItAsksForKline() {
+    RecordingStub stub = new RecordingStub();
+    var server = McpTools.build(stub, "https://api.qtsurfer.net/v1");
+
+    callText(server, "submit_backtest", Map.of("strategyCode", STRATEGY, "exchangeId", "binance",
+        "instrument", "BTC/USDT", "from", "2026-08-01", "to", "2026-08-02"));
+    assertThat(stub.backtest.type()).isEqualTo(DataSourceType.TICKER);
+
+    callText(server, "submit_backtest", Map.of("strategyCode", STRATEGY, "datasetId", "ds_1",
+        "from", "2026-08-01", "to", "2026-08-02", "type", "kline"));
+    assertThat(stub.backtest.type()).isEqualTo(DataSourceType.KLINE);
+    assertThat(stub.backtest.exchangeId()).isEqualTo("user");
+
+    callText(server, "submit_backtest", Map.of("strategyCode", STRATEGY, "datasetId", "ds_1",
+        "from", "2026-08-01", "to", "2026-08-02", "type", "KLINE"));
+    assertThat(stub.backtest.type()).as("the name is not case-sensitive").isEqualTo(DataSourceType.KLINE);
+  }
+
+  @Test
+  void submitBacktestRefusesATypeItCannotRun() {
+    RecordingStub stub = new RecordingStub();
+    String text = callText(McpTools.build(stub, "https://api.qtsurfer.net/v1"), "submit_backtest",
+        Map.of("strategyCode", STRATEGY, "exchangeId", "binance", "instrument", "BTC/USDT",
+            "from", "2026-08-01", "to", "2026-08-02", "type", "funding"));
+
+    assertThat(text).contains("type must be ticker or kline").contains("funding");
+    assertThat(stub.backtest).as("nothing was submitted").isNull();
+  }
+
+  @Test
+  void submitSweepTakesTheSameType() {
+    RecordingStub stub = new RecordingStub();
+    var server = McpTools.build(stub, "https://api.qtsurfer.net/v1");
+    Map<String, Object> grid = Map.of("multiplier", Map.of("values", List.of(2, 3)));
+
+    callText(server, "submit_sweep", Map.of("strategyCode", STRATEGY, "datasetId", "ds_1",
+        "from", "2026-08-01", "to", "2026-08-02", "params", grid));
+    assertThat(stub.sweep.type()).isEqualTo(DataSourceType.TICKER);
+
+    callText(server, "submit_sweep", Map.of("strategyCode", STRATEGY, "datasetId", "ds_1",
+        "from", "2026-08-01", "to", "2026-08-02", "params", grid, "type", "kline"));
+    assertThat(stub.sweep.type()).isEqualTo(DataSourceType.KLINE);
+  }
+
+  @Test
+  void aRunFromAnotherSessionIsReadByItsType() {
+    RecordingStub stub = new RecordingStub();
+    var server = McpTools.build(stub, "https://api.qtsurfer.net/v1");
+
+    callText(server, "get_job_status", Map.of("jobId", "j1", "exchangeId", "user", "type", "kline"));
+    assertThat(stub.statusType).isEqualTo(DataSourceType.KLINE);
+    assertThat(stub.statusExchange).isEqualTo("user");
+
+    callText(server, "get_job_status", Map.of("jobId", "j1", "exchangeId", "user"));
+    assertThat(stub.statusType).as("a ticker read unless told otherwise").isEqualTo(DataSourceType.TICKER);
+
+    callText(server, "get_equity_curve", Map.of("jobId", "j1", "exchangeId", "user", "type", "kline"));
+    assertThat(stub.statusType).isEqualTo(DataSourceType.KLINE);
+  }
+
+  @Test
+  void theReadToolsRefuseATypeTheyCannotAddress() {
+    RecordingStub stub = new RecordingStub();
+    var server = McpTools.build(stub, "https://api.qtsurfer.net/v1");
+
+    assertThat(callText(server, "get_job_status", Map.of("jobId", "j1", "exchangeId", "user", "type", "x")))
+        .contains("type must be ticker or kline");
+    assertThat(callText(server, "get_equity_curve", Map.of("jobId", "j1", "exchangeId", "user", "type", "x")))
+        .contains("type must be ticker or kline");
+    assertThat(stub.statusType).as("nothing was read").isNull();
   }
 
   @Test

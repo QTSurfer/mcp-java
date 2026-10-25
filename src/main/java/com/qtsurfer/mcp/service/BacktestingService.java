@@ -21,6 +21,7 @@ import com.qtsurfer.api.client.model.LiveRunWithStream;
 import com.qtsurfer.api.client.model.LiveSignalPage;
 import com.qtsurfer.api.client.model.LiveStreamRevoked;
 import com.qtsurfer.api.client.model.LiveStreamUrl;
+import com.qtsurfer.api.client.model.DataSourceType;
 import com.qtsurfer.api.client.model.PublicLiveListResponse;
 import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
@@ -153,6 +154,19 @@ public interface BacktestingService {
    *         or when the platform does not recognise the pair
    */
   Optional<JobSummary> getJobStatus(String jobId, String exchangeId);
+
+  /**
+   * {@link #getJobStatus(String, String)} for a run of the given data type. The platform
+   * addresses a result by exchange, type and job, so a kline run read off the platform needs its
+   * type; a job submitted in this session is answered from local state and the type is unused.
+   * The default ignores the type, which is right for an implementation that holds no platform
+   * state of its own.
+   *
+   * @param type {@link DataSourceType#TICKER} or {@link DataSourceType#KLINE}, as the run was submitted
+   */
+  default Optional<JobSummary> getJobStatus(String jobId, String exchangeId, DataSourceType type) {
+    return getJobStatus(jobId, exchangeId);
+  }
 
   /**
    * Ask the platform to stop a backtest submitted in this session.

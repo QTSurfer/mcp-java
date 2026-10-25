@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 import com.qtsurfer.mcp.McpServerRunner;
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.invoker.ApiClient;
+import com.qtsurfer.api.client.model.DataSourceType;
 import com.qtsurfer.api.client.model.DatasetImportRequest;
 import com.qtsurfer.api.client.model.DatasetImportCexRequest;
 import com.qtsurfer.api.client.model.DatasetImportDexRequest;
@@ -650,14 +651,15 @@ public final class McpTools {
         .description("Compile a Java strategy and queue a backtesting run on QTSurfer. "
             + "Returns the job ID immediately — poll with get_job_status. "
             + "Provide either exchangeId plus instrument, or datasetId (the server derives exchangeId=user). "
-            + "A run is prepared as ticker data and a dataset of either type is accepted for it; this tool "
-            + "cannot request a kline run, so a strategy that reads kline data ends FAILED with the platform's reason. "
+            + "Set type=kline for a strategy that reads candles; the default, ticker, is for one that reads "
+            + "trades. A kline strategy submitted as a ticker run ends FAILED with the platform's reason, and a "
+            + "kline run over a datasetId needs a ready dataset version of type=klines (a ticker run accepts either). "
             + "Set storeSignals only for selected runs that need emitted signals: it is disabled by default "
             + "and retained signals consume the account's storage quota. "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
             + "calling this in a loop.")
         .inputSchema(schema(
-            Map.of(
+            mapOf(
                 "strategyCode", prop("string",
                     "Complete Java source of the strategy class to compile and run"),
                 "exchangeId",   prop("string",
@@ -670,7 +672,8 @@ public final class McpTools {
                 "to",           prop("string", "Backtest end date, ISO-8601 (e.g. 2024-03-31)"),
                 "params", prop("object", "Optional scalar strategy properties for this one run; values are numbers, strings, or booleans"),
                 "storeSignals", prop("boolean", "Optional, false by default. Retain emitted signals for this run; consumes storage quota"),
-                "equityCurve", prop("object", "Optional {resample,differential,outMode}; outMode is array, short or url")),
+                "equityCurve", prop("object", "Optional {resample,differential,outMode}; outMode is array, short or url"),
+                "type", dataTypeProp()),
             List.of("strategyCode", "from", "to")))
         .build();
     return new SyncToolSpecification(tool,
@@ -680,6 +683,7 @@ public final class McpTools {
             BacktestRequest.Builder builder = BacktestRequest.builder()
                 .strategy(required(args, "strategyCode")).from(required(args, "from")).to(required(args, "to"));
             configureBacktestSource(builder, args);
+            builder.type(parseDataType(args));
             Map<String, Object> params = parseBacktestParams(args.get("params"));
             if (!params.isEmpty()) builder.params(params);
             if (args.containsKey("storeSignals")) builder.storeSignals(optionalBoolean(args, "storeSignals", false));
@@ -717,6 +721,9 @@ public final class McpTools {
                 "exchangeId", prop("string",
                     "Exchange the run was submitted against. Only needed for a job this session "
                         + "did not submit; ignored for one it did."),
+                "type", prop("string",
+                    "ticker (the default) or kline: the type the run was submitted with. Only needed "
+                        + "for a job this session did not submit, like exchangeId; ignored for one it did."),
                 "includeEquityCurve", prop("boolean",
                     "When true, append the equity curve (downsampled) to the result. Default false.")),
             List.of("jobId")))
@@ -728,7 +735,7 @@ public final class McpTools {
           String exchangeId = optional(args, "exchangeId");
           boolean includeCurve = asBool(args == null ? null : args.get("includeEquityCurve"));
           try {
-            return service.getJobStatus(jobId, exchangeId)
+            return service.getJobStatus(jobId, exchangeId, parseDataType(args))
                 .map(j -> {
                   String body = formatJobStatus(j.jobId(), j.instrument(), j.exchangeId(),
                       j.status(), j.submittedAt(), j.result(), j.retryable(), j.statusDetail());
@@ -756,10 +763,11 @@ public final class McpTools {
       return "Job " + jobId + " was not submitted in this session, and no exchangeId was given, "
           + "so the platform could not be asked: a backtest result is addressed by exchange as "
           + "well as job id. Call again with exchangeId set to the exchange the run was submitted "
-          + "against (e.g. 'binance') to look it up directly.";
+          + "against (e.g. 'binance') to look it up directly; a kline run also needs type='kline'.";
     }
     return "Job " + jobId + " was not submitted in this session and the platform returned nothing "
-        + "for it on exchange " + exchangeId + ".";
+        + "for it on exchange " + exchangeId + ". A run is addressed by exchange, type and job id: "
+        + "if it was submitted with type=kline, pass type='kline'.";
   }
 
   // ---- cancel_backtest ------------------------------------------------------
@@ -810,6 +818,9 @@ public final class McpTools {
                 "exchangeId", prop("string",
                     "Exchange the run was submitted against. Only needed for a job this session "
                         + "did not submit; ignored for one it did."),
+                "type", prop("string",
+                    "ticker (the default) or kline: the type the run was submitted with. Only needed "
+                        + "for a job this session did not submit, like exchangeId; ignored for one it did."),
                 "maxPoints", prop("integer", "Max points to return (default " + DEFAULT_MAX_POINTS
                     + ", max " + MAX_POINTS_LIMIT + "). The curve is downsampled if longer.")),
             List.of("jobId")))
@@ -820,7 +831,13 @@ public final class McpTools {
           String jobId = required(args, "jobId");
           String exchangeId = optional(args, "exchangeId");
           int maxPoints = clamp(asInt(args.get("maxPoints"), DEFAULT_MAX_POINTS), 1, MAX_POINTS_LIMIT);
-          var summary = service.getJobStatus(jobId, exchangeId);
+          DataSourceType type;
+          try {
+            type = parseDataType(args);
+          } catch (IllegalArgumentException e) {
+            return error(e.getMessage());
+          }
+          var summary = service.getJobStatus(jobId, exchangeId, type);
           if (summary.isEmpty()) {
             return text(jobNotFound(jobId, exchangeId));
           }
@@ -913,6 +930,7 @@ public final class McpTools {
                 "datasetVersionId", prop("string", "Optional historical version of datasetId"),
                 "from", prop("string", "Sweep window start, ISO-8601 (e.g. 2024-01-01)"),
                 "to", prop("string", "Sweep window end, ISO-8601 (e.g. 2024-03-31)"),
+                "type", dataTypeProp(),
                 "params", Map.of(
                     "type", "object",
                     "description", "The grid: one axis per strategy property to vary, at least one. "
@@ -957,6 +975,7 @@ public final class McpTools {
                 .to(required(args, "to"))
                 .params(parseParams(args.get("params")));
             configureSweepSource(builder, args);
+            builder.type(parseDataType(args));
             String objective = optional(args, "objective");
             if (objective != null) builder.objective(parseObjective(objective));
             String sampler = optional(args, "sampler");
@@ -2237,6 +2256,25 @@ public final class McpTools {
     } else {
       builder.exchangeId(required(args, "exchangeId")).instrument(instrument);
     }
+  }
+
+  /** The schema entry for the kind of data a submitted run reads. */
+  private static Map<String, Object> dataTypeProp() {
+    return prop("string",
+        "ticker (the default) for a strategy that reads trades, kline for one that reads candles. "
+            + "A kline run over a datasetId needs a ready dataset version of type=klines; a ticker run "
+            + "accepts either.");
+  }
+
+  /** The data type a tool call names; ticker when it names none. */
+  private static DataSourceType parseDataType(Map<String, Object> args) {
+    String raw = optional(args, "type");
+    if (raw == null) return DataSourceType.TICKER;
+    return switch (raw.toLowerCase(Locale.ROOT)) {
+      case "ticker" -> DataSourceType.TICKER;
+      case "kline" -> DataSourceType.KLINE;
+      default -> throw new IllegalArgumentException("type must be ticker or kline, got '" + raw + "'");
+    };
   }
 
   private static EquityCurveOptions parseBacktestCurve(Object raw) {
