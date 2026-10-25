@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.21.1] — 2026-10-25
+
 ### Fixed 🐛
 
 - Native binary: register the types it could not deserialize. The API's `segments` and
