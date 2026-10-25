@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.21.2] — 2026-10-25
+
+### Fixed 🐛
+
+- `submit_backtest` with a numeric or boolean `params` value no longer ends `FAILED`. The platform ran the job,
+  but its result could not be read back ("Failed deserialization for ScalarStrategyParamValue: N classes match
+  result, expected 1"); a string value was not affected. Build against `sdk-java` 0.34.1, which reads the echoed
+  parameters correctly.
+
 ## [0.21.1] — 2026-10-25
 
 ### Fixed 🐛
