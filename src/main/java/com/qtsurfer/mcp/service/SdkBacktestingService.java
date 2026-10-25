@@ -6,6 +6,7 @@ import com.qtsurfer.api.client.model.PoolDetail;
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.model.EquityCurveResult;
 import com.qtsurfer.api.client.model.CreateDatasetRequest;
+import com.qtsurfer.api.client.model.DataSourceType;
 import com.qtsurfer.api.client.model.Dataset;
 import com.qtsurfer.api.client.model.DatasetCreated;
 import com.qtsurfer.api.client.model.DatasetImportCreated;
@@ -255,7 +256,7 @@ public class SdkBacktestingService implements BacktestingService {
   }
 
   /** Session provenance required to address a retained curve through the SDK. */
-  private record SessionSweep(Sweep sweep, String exchangeId) {}
+  private record SessionSweep(Sweep sweep, String exchangeId, DataSourceType type) {}
 
   public SdkBacktestingService(AuthenticatedClient qts, String baseUrl) {
     this(qts, baseUrl, null, null);
@@ -552,10 +553,15 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public Optional<JobSummary> getJobStatus(String jobId, String exchangeId) {
+    return getJobStatus(jobId, exchangeId, DataSourceType.TICKER);
+  }
+
+  @Override
+  public Optional<JobSummary> getJobStatus(String jobId, String exchangeId, DataSourceType type) {
     SessionJob job = jobs.get(jobId);
     if (job == null) {
       if (exchangeId == null || exchangeId.isBlank()) return Optional.empty();
-      return fromPlatform(jobId, exchangeId);
+      return fromPlatform(jobId, exchangeId, type == null ? DataSourceType.TICKER : type);
     }
     ResultMap sdkResult = job.resultRef().get();
     JobResult result = sdkResult != null ? toJobResult(sdkResult) : null;
@@ -578,18 +584,19 @@ public class SdkBacktestingService implements BacktestingService {
    * carries no status code, so an unrecognised pair and a backend failure cannot be told apart
    * from the response — the message names both possibilities rather than guessing one.
    *
-   * @throws RuntimeException when the platform does not answer for this job and exchange
+   * @throws RuntimeException when the platform does not answer for this job, exchange and type
    */
-  private Optional<JobSummary> fromPlatform(String jobId, String exchangeId) {
+  private Optional<JobSummary> fromPlatform(String jobId, String exchangeId, DataSourceType type) {
     BacktestOutcome outcome;
     try {
-      outcome = qts.getBacktestResult(exchangeId, jobId);
+      outcome = qts.getBacktestResult(exchangeId, type, jobId);
     } catch (Exception e) {
       throw new RuntimeException(
           "The platform did not return job " + jobId + " on exchange " + exchangeId
-              + ". A result is addressed by both, so either the job id is unknown or the"
-              + " exchange is the wrong one — an id carried to the wrong exchange does not"
-              + " name the same run. Details: " + rootMessage(e), e);
+              + " as a " + type.getValue() + " run. A result is addressed by exchange, type and job,"
+              + " so either the job id is unknown, or the exchange or the type is the wrong one —"
+              + " an id carried to the wrong exchange or type does not name the same run."
+              + " Details: " + rootMessage(e), e);
     }
     JobStatus status;
     if (outcome instanceof BacktestOutcome.Completed) {
@@ -686,7 +693,7 @@ public class SdkBacktestingService implements BacktestingService {
     } catch (Exception e) {
       throw new RuntimeException("Sweep submission failed: " + rootMessage(e), e);
     }
-    sweeps.put(sweep.id(), new SessionSweep(sweep, request.exchangeId()));
+    sweeps.put(sweep.id(), new SessionSweep(sweep, request.exchangeId(), request.type()));
     log.info("Submitted sweep {} ({} {} {} → {})", sweep.id(),
         request.exchangeId(), request.instrument(), request.from(), request.to());
     return sweep.getAccepted();
@@ -706,7 +713,7 @@ public class SdkBacktestingService implements BacktestingService {
     if (sessionSweep == null) return Optional.empty();
     Sweep sweep = sessionSweep.sweep();
     return Optional.of(qts.getBoundedSweepRunEquityCurve(
-        sessionSweep.exchangeId(), sweep.requestId(), sweepId, runIx, maxResample));
+        sessionSweep.exchangeId(), sessionSweep.type(), sweep.requestId(), sweepId, runIx, maxResample));
   }
 
   @Override

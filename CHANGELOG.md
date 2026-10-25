@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added ✨
+
+- `type` (`ticker`, the default, or `kline`) on `submit_backtest` and `submit_sweep`: a strategy that reads
+  candles can now be run from the MCP. A kline run over a `datasetId` needs a ready dataset version of
+  `type=klines`; a kline strategy submitted as a ticker run still ends `FAILED` with the platform's reason.
+  `get_job_status` and `get_equity_curve` take the same `type` for a job this session did not submit, as they
+  take `exchangeId`, because the platform addresses a result by exchange, type and job. A sweep remembers its
+  type for its curves.
+- Build against `sdk-java` 0.35.0.
+
 ## [0.21.2] — 2026-10-25
 
 ### Fixed 🐛
