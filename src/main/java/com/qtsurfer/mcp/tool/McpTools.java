@@ -164,13 +164,15 @@ public final class McpTools {
     Tool tool = Tool.builder().name("compile_strategy")
         .description("Compile and register Java strategy source without starting a run. Returns the strategy id "
             + "and the platform's best-effort declared @StrategyProperty metadata, suitable for choosing "
-            + "submit_sweep parameter names.")
+            + "submit_sweep parameter names, plus required plan capabilities such as indicators.pro.")
         .inputSchema(schema(Map.of("strategyCode", prop("string", "Complete Java strategy source")),
             List.of("strategyCode"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         StrategyCompilation result = service.compileStrategy(required(request.arguments(), "strategyCode"));
         StringBuilder output = new StringBuilder("Strategy compiled. strategyId=").append(result.strategyId());
+        output.append("\nRequires: ")
+            .append(result.requires().isEmpty() ? "none" : String.join(", ", result.requires()));
         if (result.declaredProperties().isEmpty()) {
           output.append("\nNo declared properties were found.");
         } else {
@@ -1625,7 +1627,8 @@ public final class McpTools {
             + "Pick exchange/segment from list_exchanges liveSegments. A first run "
             + "begins in SANDBOX; a compilation starts directly in LIVE after an earlier run was "
             + "promoted and none were stopped for exceeding resource limits, unless sandbox=true "
-            + "requests another trial. Recompiled strategies start in SANDBOX. "
+            + "requests another trial. Recompiled strategies start in SANDBOX. The default trial "
+            + "uses the plan's shortest duration; sandboxMinutes can request a longer trial (5–1440 minutes). "
             + "Required: strategyId, "
             + "exchange, and segment. instruments is optional: omission uses the strategy's declared "
             + "instrument selection, or all instruments if it declares none; an explicit array selects "
@@ -1646,6 +1649,7 @@ public final class McpTools {
             "params", prop("object", "Optional initial strategy parameter values"),
             "visibility", prop("string", "private (default) or public"),
             "sandbox", prop("boolean", "Repeat the sandbox trial for an already-promoted compiled strategy; false by default. Useful for debugging with sandbox WebSocket history."),
+            "sandboxMinutes", prop("integer", "Optional minimum sandbox duration in minutes (5–1440); omitted uses the plan's shortest duration"),
             "relay", prop("boolean", "Request signal relay; false by default and uses storage"),
             "stream", prop("boolean", "Return a secret plain-WebSocket signal URL; also enables relay"),
             "warmFrom", prop("integer", "Optional seconds of market replay before start; 0 disables warmup, maximum 3600"),
@@ -1681,6 +1685,13 @@ public final class McpTools {
             .relay(optionalBoolean(args, "relay", false));
         if (args.containsKey("sandbox")) body.sandbox(optionalBoolean(args, "sandbox", false));
         if (args.containsKey("stream")) body.stream(optionalBoolean(args, "stream", false));
+        Integer sandboxMinutes = parseOptionalInteger(args.get("sandboxMinutes"), "sandboxMinutes");
+        if (sandboxMinutes != null) {
+          if (sandboxMinutes < 5 || sandboxMinutes > 1440) {
+            throw new IllegalArgumentException("sandboxMinutes must be between 5 and 1440 minutes");
+          }
+          body.sandboxMinutes(sandboxMinutes);
+        }
         Integer warmFrom = parseOptionalInteger(args.get("warmFrom"), "warmFrom");
         if (warmFrom != null) {
           if (warmFrom < 0 || warmFrom > 3600) {
@@ -1955,11 +1966,11 @@ public final class McpTools {
   }
 
   private static String formatLiveRun(LiveRun run) {
-    return "Live run " + run.getRunId() + "\nStrategy: " + run.getStrategyId()
+    String result = "Live run " + run.getRunId() + "\nStrategy: " + run.getStrategyId()
         + "\nStage: " + run.getStage() + "\nState: " + run.getState()
         + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
-        + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
-        + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
+        + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion();
+    return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }
 
   private static String formatLiveRun(LiveRunWithStream run) {
@@ -1968,6 +1979,7 @@ public final class McpTools {
         + "\nDesired: " + run.getDesired() + "\nVisibility: " + run.getVisibility()
         + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion();
     if (run.getWarmFrom() != null) result += "\nWarm from: " + run.getWarmFrom() + " seconds";
+    if (run.getSandboxMinutes() != null) result += "\nSandbox minutes: " + run.getSandboxMinutes();
     if (run.getStreamUrl() != null) result += "\nstreamUrl=" + run.getStreamUrl();
     return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }
@@ -1979,6 +1991,7 @@ public final class McpTools {
         + "\nRelay: " + run.getRelay() + "\nParams version: " + run.getParamsVersion()
         + "\nupdatedAtMs=" + run.getUpdatedAtMs();
     if (run.getWarmFrom() != null) result += "\nWarm from: " + run.getWarmFrom() + " seconds";
+    if (run.getSandboxMinutes() != null) result += "\nSandbox minutes: " + run.getSandboxMinutes();
     if (run.getStats() != null) result += "\nStats: " + run.getStats();
     return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }

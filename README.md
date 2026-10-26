@@ -176,6 +176,7 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_pools` | Discover DEX pool addresses, token addresses, fees, liquidity and market information |
 | `download_tickers` / `download_klines` | Stream one recent UTC-hour segment into a guarded local file; return path, byte count and timestamp/provisional metadata |
 | `submit_backtest` | Compile a Java strategy and submit a backtesting run against an instrument or ready dataset; returns a job ID |
+| `compile_strategy` | Register source and report declared properties plus required plan capabilities, such as `indicators.pro` |
 | `storeSignals` | Optional on selected `submit_backtest` or `submit_sweep` calls; disabled by default because retained signals consume storage quota |
 | `get_job_status` | Status and full execution metrics for a job — this session's, or any job on the platform given its `exchangeId`; failed states may include `retryable` |
 | `get_equity_curve` | Equity curve of a completed run as compact JSON, downsampled to a point budget |
@@ -234,6 +235,10 @@ DEX catalogues cannot be passed directly to managed-data preparation or backtest
 ### Live execution
 
 Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, and `segment`.
+`compile_strategy` reports plan capabilities required by the compiled source, including
+`indicators.pro` when used. Registration is allowed on any plan; running a strategy whose
+requirements are not included returns HTTP `402`, with an optional upgrade URL, and is not
+retryable until the plan changes.
 `instruments` is optional: omit it to use the instruments declared by the compiled QTScript
 strategy, or all instruments in the selected exchange/segment if the strategy declares none. An
 explicit non-empty array selects instruments; empty arrays and `null` are rejected. Pair matching
@@ -247,10 +252,12 @@ default), `sandbox` (false by default), `name`, `description`, `relay` (false by
 `warmFrom` (integer seconds,
 0–3600). `warmFrom=0` disables market replay; omit it to retain the platform's automatic short
 warmup. It is start-only, not an `update_live_params` property, and its effective value is shown by
-`get_live` and `get_live_run` for runs created after this capability existed. Set `stream=true` only
-when a plain-WebSocket consumer needs signals: it returns
-a secret `streamUrl` and also enables relay. Treat that URL as a password; do not put it in logs or
-untrusted prompts. `venueType` defaults to `cex`; CEX `instruments`
+`get_live` and `get_live_run` for runs created after this capability existed. `sandboxMinutes`
+(5–1440) requests a longer trial; omission uses the plan's shortest duration, and a value below
+that plan's minimum is refused with `429`. The requested duration is a minimum, so insufficient
+market feed can extend the trial. Set `stream=true` only when a plain-WebSocket consumer needs
+signals: it returns a secret `streamUrl` and also enables relay. Treat that URL as a password; do
+not put it in logs or untrusted prompts. `venueType` defaults to `cex`; CEX `instruments`
 may include `*` on either side only if the account tier allows wildcard selection. `stop_live` takes
 `strategyId` and returns the desired stop state; poll `get_live` until actual state settles.
 

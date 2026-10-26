@@ -129,6 +129,7 @@ public class BacktestingServiceStub implements BacktestingService {
         .params(request.getParams() == null ? Map.of() : request.getParams())
         .paramsVersion(1).relay(Boolean.TRUE.equals(request.getRelay())).startedAtMs(System.currentTimeMillis());
     run.warmFrom(request.getWarmFrom() == null ? 300 : request.getWarmFrom());
+    run.sandboxMinutes(request.getSandboxMinutes());
     if (Boolean.TRUE.equals(request.getStream())) {
       run.streamUrl(URI.create("wss://stream.invalid/live/" + runId));
     }

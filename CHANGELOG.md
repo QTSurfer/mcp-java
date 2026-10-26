@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.23.0] — 2026-10-26
+
+### Added ✨
+
+- `compile_strategy` reports the compiled strategy's required plan capabilities, such as
+  `indicators.pro`.
+- `start_live` accepts `sandboxMinutes` (5–1440) and reports the effective trial duration.
+- Register `PlanRequiredError` for native deserialization of typed HTTP `402` plan refusals.
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.36.0 (OpenAPI 0.128.48).
+
 ## [0.22.0] — 2026-10-25
 
 ### Added ✨

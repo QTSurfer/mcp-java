@@ -99,8 +99,11 @@ class McpToolsTest {
         "segment", "spot",
         "instruments", List.of("BTC/USDT"),
         "stream", true,
-        "warmFrom", 0)));
-    assertThat(started).contains("Stage: SANDBOX", "Relay: false", "Warm from: 0 seconds", "streamUrl=wss://");
+        "warmFrom", 0,
+        "sandboxMinutes", 60)));
+    assertThat(started).contains("Stage: SANDBOX", "Relay: false", "Warm from: 0 seconds",
+        "Sandbox minutes: 60", "streamUrl=wss://");
+    assertThat(service.getLastStartLiveRequest().getSandboxMinutes()).isEqualTo(60);
     String runId = started.lines().findFirst().orElseThrow().substring("Live run ".length());
 
     assertThat(textOf(call("get_live", Map.of("strategyId", strategyId))))
@@ -141,6 +144,19 @@ class McpToolsTest {
     assertThat(service.getLive(strategyId).getSources()).hasSize(1);
     assertThat(service.getLastStartLiveRequest().getSources().get(0).getInstruments()).isNull();
     assertThat(service.getLastStartLiveRequest().getSources().get(0).getVenueType().getValue()).isEqualTo("cex");
+  }
+
+  @Test
+  void startLiveRejectsSandboxMinutesOutsideApiRange() {
+    String strategyId = service.compileStrategy("public class Demo {} ").strategyId();
+    var result = call("start_live", Map.of(
+        "strategyId", strategyId,
+        "exchange", "binance",
+        "segment", "spot",
+        "sandboxMinutes", 4));
+
+    assertThat(result.isError()).isTrue();
+    assertThat(textOf(result)).contains("sandboxMinutes must be between 5 and 1440 minutes");
   }
 
   @Test
@@ -259,6 +275,7 @@ class McpToolsTest {
 
     assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
     assertThat(textOf(result)).contains("strategyId=st-");
+    assertThat(textOf(result)).contains("Requires: none");
   }
 
   // ---- datasets ----------------------------------------------------------

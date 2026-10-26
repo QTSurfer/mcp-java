@@ -286,7 +286,7 @@ public class SdkBacktestingService implements BacktestingService {
           .map(property -> new StrategyProperty(property.getName(), property.getDescription(),
               property.getDefaultValue(), property.getReflected(), property.getMin(), property.getMax(),
               property.getStep()))
-          .toList());
+          .toList(), strategy.requires());
     } catch (Exception e) {
       throw new RuntimeException("Compilation failed: " + rootMessage(e), e);
     }

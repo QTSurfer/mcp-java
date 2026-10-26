@@ -167,6 +167,7 @@ class ReflectConfigTest {
       MODEL + "PrepareJobStateAllOfHoursWithoutData",
       MODEL + "PrepareJobStateAllOfHoursWithoutData$RationaleEnum",
       MODEL + "ResponseError",
+      MODEL + "PlanRequiredError",
       MODEL + "ErrorNextCall",
       MODEL + "ErrorNextCall$MethodEnum",
       MODEL + "ResultMap",

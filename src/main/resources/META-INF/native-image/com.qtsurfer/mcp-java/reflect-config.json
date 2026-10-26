@@ -733,6 +733,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.CompileStrategy200Response$RequiresEnum",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.CoverageWindow",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
@@ -1013,6 +1019,12 @@
   { "name": "com.qtsurfer.api.client.model.ListDatasets200Response", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
   {
     "name": "com.qtsurfer.api.client.model.ResponseError",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.qtsurfer.api.client.model.PlanRequiredError",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,
     "allDeclaredFields": true
