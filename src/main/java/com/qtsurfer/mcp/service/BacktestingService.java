@@ -90,7 +90,7 @@ public interface BacktestingService {
   DatasetImportResult importDataset(String name, String instrument, String from, String to,
       String network, String protocol, String version, String contract);
 
-  /** Start a typed CEX or DEX history import with an optional cadence. */
+  /** Start a typed CEX or DEX history import with an optional plan-limited cadence. */
   DatasetImportResult importDataset(DatasetImportRequest request);
 
   /** Read one external import's fetch and ingest state. */

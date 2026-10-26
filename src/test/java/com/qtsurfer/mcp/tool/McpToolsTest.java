@@ -184,6 +184,21 @@ class McpToolsTest {
     assertThat(body.getCadence().getValue()).isEqualTo("3m");
     assertThat(body.getCex().getExchange()).isEqualTo("binance");
     assertThat(body.getDex()).isNull();
+    assertThat(textOf(result)).contains("cadence=3m");
+  }
+
+  @Test
+  void dexCandleImportsCanOmitProtocolAndVersion() {
+    var result = call("import_dataset", Map.of("name", "WETH candles", "instrument", "WETH/USDC",
+        "from", "2026-10-01T00:00:00Z", "to", "2026-10-02T00:00:00Z", "type", "dex",
+        "network", "ethereum", "contract", "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+        "cadence", "3m"));
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    var body = service.getLastDatasetImportRequest();
+    assertThat(body.getType().getValue()).isEqualTo("dex");
+    assertThat(body.getCadence().getValue()).isEqualTo("3m");
+    assertThat(body.getDex().getId()).isNull();
+    assertThat(body.getDex().getVersion()).isNull();
   }
 
   @Test

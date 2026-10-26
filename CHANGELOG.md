@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.24.0] — 2026-10-26
+
+### Added ✨
+
+- `import_dataset` reports the effective cadence returned by the API when known. DEX candle imports
+  can omit protocol and version and accept any cadence included in the plan; requesting native
+  per-trade history still requires those fields on a plan that includes the source's native rate.
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.37.0 (OpenAPI 0.128.49), including the plan-default cadence and typed
+  `402` plan refusal for preparation and dataset imports.
+
 ## [0.23.0] — 2026-10-26
 
 ### Added ✨

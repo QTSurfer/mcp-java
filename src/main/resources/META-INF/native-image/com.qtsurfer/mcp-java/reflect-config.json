@@ -615,6 +615,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "com.qtsurfer.api.client.model.PrepareAccepted",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "com.qtsurfer.api.client.model.AuthTokenError",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

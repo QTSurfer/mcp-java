@@ -362,9 +362,15 @@ passed through to the API.
 
 ### Import market history
 
-`import_dataset` defaults to `type=dex`, preserving the existing pool-history inputs
-(`network`, `contract`, `protocol`, `version`). For CEX, pass `type=cex`, a discovered
+`import_dataset` defaults to `type=dex`. For a DEX source, pass `network` and `contract`;
+`protocol` and `version` are needed for native per-trade history when the plan includes that source's
+native rate. An explicit cadence requests candles, for which those two fields are ignored. For CEX,
+pass `type=cex`, a discovered
 `exchange`, `segment=spot`, and `dataType=ticker` or `klines`; do not include DEX fields.
+Omitting cadence uses the plan's default; for DEX, a plan that includes the source's native rate can
+use native per-trade data when cadence is omitted. The import response includes the effective cadence
+when known. A cadence outside the plan returns non-retryable `402`; the tool includes an upgrade URL
+when the API provides one.
 
 ```json
 {
@@ -376,15 +382,14 @@ passed through to the API.
   "dataType": "klines",
   "from": "2026-10-01T00:00:00Z",
   "to": "2026-10-01T01:00:00Z",
-  "cadence": "1m"
+  "cadence": "3m"
 }
 ```
 
-Choose a range within `get_account`'s import-range cap. CEX cadence accepts `1s`, `5s`,
-`1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`, `1d`, `1w`, or `1q`.
-Omission chooses the finest cadence held across the entire range; requesting a finer or
-incompatible cadence fails asynchronously. DEX accepts `1s`, `1m`, `5m`, or omission for
-native events. Save the returned `datasetId`/`importId` and call `get_dataset_import` until
+Choose a range within `get_account`'s import-range cap. Managed CEX and DEX candle imports accept
+the cadences included in the plan; see the API's [cadences by plan](https://www.qtsurfer.com/docs/developers/api/backtest_execute#cadences-by-plan)
+table. A cadence outside the plan returns non-retryable `402`. Save the returned `datasetId`/`importId`
+and call `get_dataset_import` until
 `READY` or `FAILED`; only a ready version can be backtested. Resume polling those ids after
 an interrupted wait instead of creating another dataset. Imports consume dataset, shared-storage
 and execution quotas; inspect account limits and usage first, and inspect the terminal error

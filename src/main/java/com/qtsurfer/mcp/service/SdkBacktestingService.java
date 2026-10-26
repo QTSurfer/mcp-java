@@ -357,14 +357,16 @@ public class SdkBacktestingService implements BacktestingService {
   @Override
   public DatasetImportResult importDataset(String name, String instrument, String from, String to,
       String network, String protocol, String version, String contract) {
-    if (protocol == null || version == null) {
-      throw new IllegalArgumentException("protocol and version are required for a native-cadence DEX import");
+    if ((protocol == null) != (version == null)) {
+      throw new IllegalArgumentException("protocol and version must be provided together");
     }
     DatasetImportDexRequest dex = new DatasetImportDexRequest()
         .network(DatasetImportDexRequest.NetworkEnum.valueOf(network.toUpperCase()))
-        .contract(contract)
-        .id(DatasetImportDexRequest.IdEnum.valueOf(protocol.toUpperCase()))
-        .version(DatasetImportDexRequest.VersionEnum.valueOf(version.toUpperCase()));
+        .contract(contract);
+    if (protocol != null) {
+      dex.id(DatasetImportDexRequest.IdEnum.valueOf(protocol.toUpperCase()))
+          .version(DatasetImportDexRequest.VersionEnum.valueOf(version.toUpperCase()));
+    }
     return importDataset(new DatasetImportRequest()
         .name(name).instrument(instrument).from(OffsetDateTime.parse(from)).to(OffsetDateTime.parse(to))
         .type(DatasetImportRequest.TypeEnum.DEX).dex(dex));
@@ -374,7 +376,7 @@ public class SdkBacktestingService implements BacktestingService {
   public DatasetImportResult importDataset(DatasetImportRequest request) {
     DatasetImportCreated created = qts.importDataset(request);
     return new DatasetImportResult(created.getDatasetId(), created.getImportId(), created.getJobId(),
-        String.valueOf(created.getStatus()));
+        String.valueOf(created.getStatus()), created.getCadence());
   }
 
   @Override

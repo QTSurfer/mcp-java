@@ -234,10 +234,12 @@ public final class McpTools {
 
   private static SyncToolSpecification importDataset(BacktestingService service) {
     Tool tool = Tool.builder().name("import_dataset")
-        .description("Create a dataset from CEX market history or DEX swap history. type defaults to dex. "
+        .description("Create a dataset from CEX market history or DEX pool history. type defaults to dex. "
             + "For cex provide exchange, segment=spot and dataType=ticker|klines. For dex provide network, "
-            + "contract, protocol and version. Optional cadence selects bars (DEX: 1s/1m/5m; CEX: 1s to 1q). "
-            + "CEX omission chooses the finest cadence the whole range holds; finer requests fail asynchronously. "
+            + "and contract. Optional cadence requests candles at a cadence included in your plan; omission uses "
+            + "the plan default. DEX accepts all listed plan cadences; native per-trade history is available only "
+            + "when the plan includes that source's native rate and requires protocol and version. A cadence "
+            + "outside the plan is a non-retryable 402. The response reports the effective cadence when known. "
             + "Returns datasetId and importId; "
             + "poll get_dataset_import until READY before using the dataset in a run.")
         .inputSchema(schema(mapOf(
@@ -246,14 +248,14 @@ public final class McpTools {
             "from", prop("string", "Inclusive ISO-8601 timestamp"),
             "to", prop("string", "Exclusive ISO-8601 timestamp"),
             "type", prop("string", "dex (default) or cex"),
-            "cadence", prop("string", "Optional candle cadence; omitted keeps DEX native events or CEX finest shared cadence"),
+            "cadence", prop("string", "Optional plan cadence. Explicit cadence requests candles; omission uses the plan default"),
             "exchange", prop("string", "CEX exchange id from list_exchanges"),
             "segment", prop("string", "CEX import segment, currently spot"),
             "dataType", prop("string", "CEX source and resulting dataset type: ticker or klines"),
             "network", prop("string", "DEX network: ethereum or robinhood"),
             "contract", prop("string", "Pool or pair contract address"),
-            "protocol", prop("string", "DEX protocol, currently uniswap"),
-            "version", prop("string", "Protocol version: v2 or v3")),
+            "protocol", prop("string", "DEX protocol, currently uniswap; provide with version for native per-trade imports"),
+            "version", prop("string", "Protocol version, v2 or v3; provide with protocol for native per-trade imports")),
             List.of("name", "instrument", "from", "to"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
@@ -265,9 +267,6 @@ public final class McpTools {
             .type(DatasetImportRequest.TypeEnum.fromValue(type));
         String cadence = optional(args, "cadence");
         if (cadence != null) {
-          if ("dex".equals(type) && !List.of("1s", "1m", "5m").contains(cadence)) {
-            throw new IllegalArgumentException("DEX cadence must be 1s, 1m or 5m");
-          }
           body.cadence(DatasetImportRequest.CadenceEnum.fromValue(cadence));
         }
         if ("cex".equals(type)) {
@@ -277,15 +276,29 @@ public final class McpTools {
               .dataType(DatasetImportCexRequest.DataTypeEnum.fromValue(required(args, "dataType"))));
         } else {
           rejectFields(args, "exchange", "segment", "dataType");
-          body.dex(new DatasetImportDexRequest()
+          String protocol = optional(args, "protocol");
+          String version = optional(args, "version");
+          if ((protocol == null) != (version == null)) {
+            throw new IllegalArgumentException("protocol and version must be provided together");
+          }
+          DatasetImportDexRequest dex = new DatasetImportDexRequest()
               .network(DatasetImportDexRequest.NetworkEnum.fromValue(required(args, "network")))
-              .id(DatasetImportDexRequest.IdEnum.fromValue(required(args, "protocol")))
-              .version(DatasetImportDexRequest.VersionEnum.fromValue(required(args, "version")))
-              .contract(required(args, "contract")));
+              .contract(required(args, "contract"));
+          if (protocol != null) {
+            dex.id(DatasetImportDexRequest.IdEnum.fromValue(protocol))
+                .version(DatasetImportDexRequest.VersionEnum.fromValue(version));
+          }
+          body.dex(dex);
         }
         DatasetImportResult result = service.importDataset(body);
+        String cadenceResult = result.cadence() == null ? "" : " cadence=" + result.cadence();
         return text("Dataset import accepted. datasetId=" + result.datasetId() + " importId=" + result.importId()
-            + " ingestJobId=" + result.jobId() + "\nPoll get_dataset_import with datasetId and importId.");
+            + " ingestJobId=" + result.jobId() + cadenceResult
+            + "\nPoll get_dataset_import with datasetId and importId.");
+      } catch (QTSError e) {
+        String upgrade = e.getUpgradeUrl().map(uri -> " Upgrade plan: " + uri).orElse("");
+        String noRetry = e.getPlanRequiredError().isPresent() ? " This plan refusal is not retryable." : "";
+        return error("Failed to start dataset import: " + e.getMessage() + noRetry + upgrade);
       } catch (Exception e) {
         return error("Failed to start dataset import: " + e.getMessage());
       }

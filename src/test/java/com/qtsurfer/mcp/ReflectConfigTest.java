@@ -125,6 +125,7 @@ class ReflectConfigTest {
   private static final List<String> PINNED_WORKFLOW_INTERMEDIATES = List.of(
       MODEL + "AbstractOpenApiSchema",
       MODEL + "AcceptedJob",
+      MODEL + "PrepareAccepted",
       MODEL + "AuthTokenError",
       MODEL + "AuthTokenError$CodeEnum",
       MODEL + "AuthTokenResponse",

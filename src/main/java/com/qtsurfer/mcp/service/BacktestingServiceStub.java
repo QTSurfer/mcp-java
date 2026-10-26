@@ -309,7 +309,7 @@ public class BacktestingServiceStub implements BacktestingService {
     datasets.put(datasetId, new DatasetSummary(datasetId, name, instrument, null, from, to, null, null, null));
     imports.put(uploadKey(datasetId, importId), new DatasetImportStatus(
         datasetId, importId, "FETCHING", jobId, null, null));
-    return new DatasetImportResult(datasetId, importId, jobId, "FETCHING");
+    return new DatasetImportResult(datasetId, importId, jobId, "FETCHING", null);
   }
 
   @Override
@@ -320,8 +320,10 @@ public class BacktestingServiceStub implements BacktestingService {
   @Override
   public DatasetImportResult importDataset(DatasetImportRequest request) {
     lastDatasetImportRequest = request;
-    return importDataset(request.getName(), request.getInstrument(), request.getFrom().toString(),
+    DatasetImportResult result = importDataset(request.getName(), request.getInstrument(), request.getFrom().toString(),
         request.getTo().toString(), null, null, null, null);
+    return new DatasetImportResult(result.datasetId(), result.importId(), result.jobId(), result.status(),
+        request.getCadence() == null ? null : request.getCadence().getValue());
   }
 
   @Override
