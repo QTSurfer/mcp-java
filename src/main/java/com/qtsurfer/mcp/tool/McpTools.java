@@ -239,7 +239,10 @@ public final class McpTools {
             + "and contract. Optional cadence requests candles at a cadence included in your plan; omission uses "
             + "the plan default. DEX accepts all listed plan cadences; native per-trade history is available only "
             + "when the plan includes that source's native rate and requires protocol and version. A cadence "
-            + "outside the plan is a non-retryable 402. The response reports the effective cadence when known. "
+            + "outside the plan is a non-retryable 402. Solana supports candles only, uses the plan default "
+            + "when cadence is omitted, and needs no protocol or version; pass its case-sensitive base58 pool address "
+            + "as written. Candle imports older than 180 days return 400 immediately. DEX candle bars can be absent "
+            + "for intervals with no trades. The response reports the effective cadence when known. "
             + "Returns datasetId and importId; "
             + "poll get_dataset_import until READY before using the dataset in a run.")
         .inputSchema(schema(mapOf(
@@ -252,7 +255,7 @@ public final class McpTools {
             "exchange", prop("string", "CEX exchange id from list_exchanges"),
             "segment", prop("string", "CEX import segment, currently spot"),
             "dataType", prop("string", "CEX source and resulting dataset type: ticker or klines"),
-            "network", prop("string", "DEX network: ethereum or robinhood"),
+            "network", prop("string", "DEX network: ethereum, robinhood, or solana (candles only)"),
             "contract", prop("string", "Pool or pair contract address"),
             "protocol", prop("string", "DEX protocol, currently uniswap; provide with version for native per-trade imports"),
             "version", prop("string", "Protocol version, v2 or v3; provide with protocol for native per-trade imports")),

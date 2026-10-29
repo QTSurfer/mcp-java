@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.25.0] — 2026-10-29
+
+### Added ✨
+
+- `import_dataset` accepts Solana pool history as candles only. Omit protocol and version; the tool
+  uses the plan's default cadence when cadence is omitted and accepts the pool's case-sensitive
+  base58 address. Candle imports older than 180 days are refused immediately, and DEX candles may
+  omit intervals with no trades.
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.38.0 (API client 0.28.0, OpenAPI 0.128.50).
+
 ## [0.24.0] — 2026-10-26
 
 ### Added ✨
