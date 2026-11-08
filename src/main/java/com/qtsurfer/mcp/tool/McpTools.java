@@ -675,7 +675,9 @@ public final class McpTools {
             + "Set storeSignals only for selected runs that need emitted signals: it is disabled by default "
             + "and retained signals consume the account's storage quota. "
             + "To try the same strategy at many parameter settings, use submit_sweep instead of "
-            + "calling this in a loop.")
+            + "calling this in a loop. If execution returns HTTP 409 because the compiled strategy is "
+            + "incompatible with the current engine, register the same source again and resubmit with "
+            + "the new compilation; do not retry the stale compiled strategy.")
         .inputSchema(schema(
             mapOf(
                 "strategyCode", prop("string",
@@ -934,7 +936,9 @@ public final class McpTools {
             + "Returns the sweep id: poll it with get_sweep_status, stop it with cancel_sweep, and "
             + "ask which parameter mattered with get_sweep_sensitivity. Those three only answer for "
             + "sweeps submitted in this session. Set storeSignals only for selected sweeps that need "
-            + "emitted signals: it is disabled by default and retained signals consume storage quota.")
+            + "emitted signals: it is disabled by default and retained signals consume storage quota. "
+            + "If execution returns HTTP 409 because the compiled strategy is incompatible with the "
+            + "current engine, register the same source again and resubmit with the new compilation.")
         .inputSchema(schema(
             mapOf(
                 "strategyCode", prop("string",
@@ -1653,7 +1657,10 @@ public final class McpTools {
             + "type defaults to ticker; optional params must match the strategy's declared properties. "
             + "visibility defaults to private. relay defaults to false; enable only when signals are "
             + "needed because retained signal data consumes shared account storage. Check "
-            + "get_account_usage first. This MCP exposes request/response tools, not WebSocket subscriptions.")
+            + "get_account_usage first. HTTP 409 can mean another run is already active, or that the "
+            + "compiled strategy is incompatible with the current engine; use the server message to "
+            + "distinguish them. For an incompatible strategy, register its source again and retry "
+            + "with the new strategy id. This MCP exposes request/response tools, not WebSocket subscriptions.")
         .inputSchema(schema(mapOf(
             "strategyId", prop("string", "Previously compiled strategy id"),
             "venueType", prop("string", "cex (default) or dex"),

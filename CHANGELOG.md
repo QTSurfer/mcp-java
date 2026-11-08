@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Explain recovery for HTTP `409` stale compiled strategies in backtest, sweep, and live tool descriptions.
+
+## [0.25.1] — 2026-11-08
+
+### Changed 🔄
+
+- Build against `sdk-java` 0.39.0 for API/storage connection failover and HTTP `409` recovery on
+  incompatible compiled strategies (API client 0.29.0, OpenAPI 0.128.54).
+
 ## [0.25.0] — 2026-10-29
 
 ### Added ✨

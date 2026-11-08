@@ -20,7 +20,7 @@ Run a backtesting workflow from any MCP-capable AI assistant: list exchanges, ex
 - **Fat JAR fallback** — single file, runs anywhere with JDK 21+.
 - **Docker** — `docker run -i` for containerised deployments (`eclipse-temurin:21-jre-alpine`, ~230 MB).
 - **Long-lived API key, refresh handled for you** — drop `QTSURFER_APIKEY` once in your MCP client config; `sdk-java` exchanges it for a JWT on startup and refreshes transparently for the lifetime of the process.
-- **Backed by [`com.github.QTSurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — authenticated account, live execution, compile → prepare → execute orchestration, retry and cancellation.
+- **Backed by [`com.qtsurfer:sdk-java`](https://github.com/QTSurfer/sdk-java)** — authenticated account, live execution, compile → prepare → execute orchestration, retry and cancellation.
 
 ## Installation
 
