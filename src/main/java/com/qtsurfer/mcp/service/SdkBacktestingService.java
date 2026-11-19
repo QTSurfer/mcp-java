@@ -27,6 +27,8 @@ import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.AttachLiveSourceRequest;
+import com.qtsurfer.api.client.model.LiveAttachmentAccepted;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
@@ -134,6 +136,16 @@ public class SdkBacktestingService implements BacktestingService {
   @Override
   public LiveRunWithStream startLive(String strategyId, StartLiveRequest request) {
     return qts.startLive(strategyId, request);
+  }
+
+  @Override
+  public LiveAttachmentAccepted attachLiveSource(String runId, AttachLiveSourceRequest request) {
+    return qts.attachLiveSource(runId, request);
+  }
+
+  @Override
+  public LiveAttachmentAccepted detachLiveSource(String runId, String attachmentId) {
+    return qts.detachLiveSource(runId, attachmentId);
   }
 
   @Override

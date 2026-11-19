@@ -62,8 +62,8 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFortyFourTools() {
-    assertThat(tools).hasSize(44);
+  void registersExactlyFortySixTools() {
+    assertThat(tools).hasSize(46);
   }
 
   @Test
@@ -76,7 +76,7 @@ class McpToolsTest {
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
-        "get_account", "get_account_usage", "start_live", "get_live", "get_live_run", "stop_live", "rotate_live_stream", "revoke_live_stream", "list_live",
+        "get_account", "get_account_usage", "start_live", "attach_live_source", "detach_live_source", "get_live", "get_live_run", "stop_live", "rotate_live_stream", "revoke_live_stream", "list_live",
         "list_public_live", "update_live", "update_live_params", "send_live_command", "get_live_signals");
   }
 
@@ -85,7 +85,8 @@ class McpToolsTest {
     assertThat(textOf(call("get_account", Map.of())))
         .contains("Account tier: free", "Shared storage max bytes: 10000000",
             "Maximum Cartesian sweep combinations: 10000", "Maximum import range hours: 168",
-            "Key scopes (enforced per protected operation):", "exchanges=[read]");
+            "Key scopes (enforced per protected operation):", "exchanges=[read]",
+            "API key expires at: 2030-01-01T00:00Z");
     assertThat(textOf(call("get_account_usage", Map.of())))
         .contains("Current account usage", "Shared storage: 0 bytes");
   }
@@ -129,6 +130,40 @@ class McpToolsTest {
         .contains("Retained signals (oldest first):", "None.");
     assertThat(textOf(call("stop_live", Map.of("strategyId", strategyId))))
         .contains("Desired: STOPPED");
+  }
+
+  @Test
+  void liveRunCanWaitForSourceAndAttachmentsCanChangeWhileItRuns() {
+    String strategyId = service.compileStrategy("public class Demo {}").strategyId();
+    String waiting = textOf(call("start_live", Map.of("strategyId", strategyId)));
+    assertThat(waiting).contains("State: WAITING");
+    assertThat(service.getLastStartLiveRequest().getSources()).isNull();
+    String runId = waiting.lines().findFirst().orElseThrow().substring("Live run ".length());
+
+    Map<String, Object> source = Map.of(
+        "venueType", "cex", "exchange", "binance", "segment", "spot", "type", "ticker",
+        "instruments", List.of("BTC/USDT"));
+    String attached = textOf(call("attach_live_source", Map.of(
+        "runId", runId, "source", source, "warmFrom", 120, "ref", "alert-8841")));
+    assertThat(attached).contains("is ATTACHING", "Poll get_live_run");
+    String attachmentId = service.getLiveRun(runId).getAttachments().get(0).getAttachmentId();
+    assertThat(textOf(call("get_live_run", Map.of("runId", runId))))
+        .contains("Attachments:", attachmentId + " ATTACHING");
+
+    assertThat(textOf(call("detach_live_source", Map.of(
+        "runId", runId, "attachmentId", attachmentId))))
+        .contains("is DETACHING", "Poll get_live_run");
+    assertThat(textOf(call("get_live_run", Map.of("runId", runId))))
+        .contains(attachmentId + " DETACHING");
+  }
+
+  @Test
+  void startLiveRequiresExchangeAndSegmentTogether() {
+    String strategyId = service.compileStrategy("public class Demo {}").strategyId();
+    assertThat(call("start_live", Map.of("strategyId", strategyId, "exchange", "binance")).isError())
+        .isTrue();
+    assertThat(call("start_live", Map.of("strategyId", strategyId, "type", "ticker")).isError())
+        .isTrue();
   }
 
   @Test

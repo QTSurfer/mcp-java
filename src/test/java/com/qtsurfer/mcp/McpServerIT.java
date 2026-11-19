@@ -39,7 +39,7 @@ class McpServerIT {
 
   @Test
   void registersExactlyFortyThreeTools() {
-    assertThat(runner.getServer().listTools()).hasSize(44);
+    assertThat(runner.getServer().listTools()).hasSize(46);
   }
 
   @Test
@@ -52,7 +52,7 @@ class McpServerIT {
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
         "submit_sweep", "get_sweep_status", "get_sweep_run_equity_curve", "cancel_sweep", "get_sweep_sensitivity",
         "list_strategies", "validate_strategy", "get_strategy", "delete_strategy", "get_strategy_code",
-        "get_account", "get_account_usage", "start_live", "get_live", "get_live_run", "stop_live", "rotate_live_stream", "revoke_live_stream", "list_live",
+        "get_account", "get_account_usage", "start_live", "attach_live_source", "detach_live_source", "get_live", "get_live_run", "stop_live", "rotate_live_stream", "revoke_live_stream", "list_live",
         "list_public_live", "update_live", "update_live_params", "send_live_command", "get_live_signals");
   }
 

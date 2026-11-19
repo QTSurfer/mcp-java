@@ -6,8 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
+## [0.26.0] — 2026-11-19
 
+### Added ✨
+
+- Add `attach_live_source` and `detach_live_source` so an agent can change a live run's market-data
+  sources without stopping it, including starting a run in `WAITING` with no source.
+
+### Changed 🔄
+
+- Report API-key expiry through `get_account` and explain how to rotate the key before it expires.
+- Adopt `sdk-java` 0.40.0 (API client 0.30.0, OpenAPI 0.128.57).
 - Explain recovery for HTTP `409` stale compiled strategies in backtest, sweep, and live tool descriptions.
 
 ## [0.25.1] — 2026-11-08

@@ -189,9 +189,10 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 | `list_strategies` | List every strategy registered under this account; optionally include deleted entries |
 | `delete_strategy` | Release a registered strategy |
 | `get_strategy_code` | Fetch the exact source last registered for a strategy id |
-| `get_account` / `get_account_usage` | Read account tier limits (including the Cartesian sweep cap) and current dataset, strategy, signal and shared-storage usage |
-| `start_live` / `get_live` / `stop_live` | Start a strategy's live run, inspect sandbox/live state (and an optional secret plain-stream URL), and request it to stop |
-| `get_live_run` | Inspect one owned run by its canonical id, including its last update and current optional counters |
+| `get_account` / `get_account_usage` | Read account tier limits, API-key expiry, and current dataset, strategy, signal and shared-storage usage |
+| `start_live` / `get_live` / `stop_live` | Start a strategy's live run with a source or in `WAITING`, inspect its state, and request it to stop |
+| `attach_live_source` / `detach_live_source` | Add or remove a source while a run stays live; the acceptance is asynchronous and `get_live_run` reports attachment states |
+| `get_live_run` | Inspect one owned run by its canonical id, including attachment states, last update and current optional counters |
 | `rotate_live_stream` / `revoke_live_stream` | Replace or permanently revoke a run's secret plain-WebSocket signal URL |
 | `list_live` / `list_public_live` | Page through all your own runs or browse currently-running public runs separately |
 | `update_live` / `update_live_params` | Change run visibility/metadata or queue updates to declared strategy parameters |
@@ -211,9 +212,11 @@ needs the retained signal history, and check usage again before enabling it for 
 
 The empty argument object above is the input to either account tool.
 
-`get_account` also reports the API key's resource-to-actions `scopes` map. An empty map
-means no grants. The API enforces each protected operation's required scope and returns
-`403 insufficient_scope` with the missing `resource:action` grant.
+`get_account` also reports the API key's resource-to-actions `scopes` map and `apiKeyExpiresAt`.
+An empty scopes map means no grants; a null expiry means the key does not expire. Rotate an expiring
+key before that time. An already-issued token keeps working until its own expiry. The API enforces
+each protected operation's required scope and returns `403 insufficient_scope` with the missing
+`resource:action` grant.
 
 ### Venue and pool discovery
 
@@ -234,7 +237,10 @@ DEX catalogues cannot be passed directly to managed-data preparation or backtest
 
 ### Live execution
 
-Compile a strategy first, then call `start_live` with its `strategyId`, `exchange`, and `segment`.
+Compile a strategy first, then call `start_live` with its `strategyId`. Add `exchange` and `segment`
+together to begin with one source; omit both to create a run in `WAITING` that can start once
+`attach_live_source` accepts its first source. Additional sources can be attached while the run
+stays live.
 `compile_strategy` reports plan capabilities required by the compiled source, including
 `indicators.pro` when used. Registration is allowed on any plan; running a strategy whose
 requirements are not included returns HTTP `402`, with an optional upgrade URL, and is not
@@ -292,8 +298,17 @@ soft-deleted entries marked with `deletedAt`. `get_account` reports `maxSweepCar
 maximum allowed Cartesian combination count for a sweep.
 
 `get_live_run` takes the canonical `runId` and adds `updatedAtMs` plus optional current counters to
-the normal run state. `rotate_live_stream` replaces the secret stream URL; `revoke_live_stream`
-permanently disables it for that run.
+the normal run state and lists each attachment with its `attachmentId`, source, and state. `attach_live_source`
+takes `runId`, a `source` object in the same shape as the initial source, and optional `warmFrom` and
+`ref`. Sources on one run must use the same exchange for CEX, or the same chain and protocol for
+DEX. The `202` means accepted, not attached: poll `get_live_run` until the state is `ATTACHED` or
+`REFUSED`. Reuse `ref` to make a retry idempotent. A duplicate DEX pair may be refused; the
+strategy's `onDetach` callback receives `REFUSED` for that case.
+
+`detach_live_source` takes `runId` and `attachmentId`. Its `202` means detaching was accepted; poll
+until `DETACHED`. Removing the last source returns the run to `WAITING`; strategy memory is released,
+paper accounts remain, and open positions for that source are reported as gaps. `rotate_live_stream`
+replaces the secret stream URL; `revoke_live_stream` permanently disables it for that run.
 
 `update_live` takes `runId` plus at least one of `visibility`, `name`, or `description`.
 `update_live_params` takes `runId` and a non-empty `params` object containing only declared strategy

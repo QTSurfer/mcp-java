@@ -17,6 +17,9 @@ import com.qtsurfer.api.sdk.errors.QTSError;
 import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.AttachLiveSourceRequest;
+import com.qtsurfer.api.client.model.LiveAttachment;
+import com.qtsurfer.api.client.model.LiveAttachmentAccepted;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
@@ -145,6 +148,8 @@ public final class McpTools {
         getAccount(service),
         getAccountUsage(service),
         startLive(service),
+        attachLiveSource(service),
+        detachLiveSource(service),
         getLive(service),
         getLiveRun(service),
         stopLive(service),
@@ -1609,6 +1614,8 @@ public final class McpTools {
         Account account = service.getAccount();
         return text("Account tier: " + account.getTier() + "\n"
             + "Key scopes (enforced per protected operation): " + account.getScopes() + "\n"
+            + "API key expires at: " + (account.getApiKeyExpiresAt() == null
+                ? "not set" : account.getApiKeyExpiresAt()) + " (the current token keeps its own expiry)\n"
             + "Datasets max: " + account.getMaxDatasets() + "\n"
             + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
             + "Maximum Cartesian sweep combinations: " + account.getMaxSweepCartesian() + "\n"
@@ -1642,15 +1649,15 @@ public final class McpTools {
 
   private static SyncToolSpecification startLive(BacktestingService service) {
     Tool tool = Tool.builder().name("start_live")
-        .description("Start a registered strategy on a CEX feed or one DEX pool. venueType defaults to cex. "
+        .description("Start a registered strategy on a CEX feed or one DEX pool, or start it with no source so it waits in WAITING. "
+            + "exchange and segment must be supplied together to attach one initial source; venueType defaults to cex. "
             + "DEX requires type=kline and exactly one 0x pool address; omission and wildcards are invalid. "
             + "Pick exchange/segment from list_exchanges liveSegments. A first run "
             + "begins in SANDBOX; a compilation starts directly in LIVE after an earlier run was "
             + "promoted and none were stopped for exceeding resource limits, unless sandbox=true "
             + "requests another trial. Recompiled strategies start in SANDBOX. The default trial "
             + "uses the plan's shortest duration; sandboxMinutes can request a longer trial (5–1440 minutes). "
-            + "Required: strategyId, "
-            + "exchange, and segment. instruments is optional: omission uses the strategy's declared "
+            + "Required: strategyId. When a source is supplied, instruments is optional: omission uses the strategy's declared "
             + "instrument selection, or all instruments if it declares none; an explicit array selects "
             + "instruments (for example [\"*\"], [\"*/USDT\"], or [\"BTC/*\"]; wildcard patterns "
             + "require a plan that permits all instruments, and pair matching is case-insensitive). "
@@ -1664,8 +1671,8 @@ public final class McpTools {
         .inputSchema(schema(mapOf(
             "strategyId", prop("string", "Previously compiled strategy id"),
             "venueType", prop("string", "cex (default) or dex"),
-            "exchange", prop("string", "Exchange id, e.g. binance"),
-            "segment", prop("string", "Market segment, e.g. spot"),
+            "exchange", prop("string", "Optional initial source exchange id, e.g. binance; provide with segment"),
+            "segment", prop("string", "Optional initial source market segment, e.g. spot; provide with exchange"),
             "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
                 "description", "Optional symbols; omit to use the strategy's declared selection, or all if none; pair matching is case-insensitive; wildcard patterns like [\"*/USDT\"] require account limits"),
             "type", prop("string", "ticker or kline; defaults to ticker"),
@@ -1678,34 +1685,25 @@ public final class McpTools {
             "warmFrom", prop("integer", "Optional seconds of market replay before start; 0 disables warmup, maximum 3600"),
             "name", prop("string", "Optional display name"),
             "description", prop("string", "Optional run description")),
-            List.of("strategyId", "exchange", "segment"))).build();
+            List.of("strategyId"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         Map<String, Object> args = request.arguments();
-        Object rawInstruments = args.get("instruments");
-        String venueType = optional(args, "venueType") == null ? "cex"
-            : required(args, "venueType").trim().toLowerCase(Locale.ROOT);
-        LiveSourceRequest source = new LiveSourceRequest()
-            .venueType(LiveSourceRequest.VenueTypeEnum.fromValue(venueType))
-            .exchange(required(args, "exchange")).segment(required(args, "segment"))
-            .type(LiveSourceRequest.TypeEnum.fromValue(optional(args, "type") == null
-                ? "ticker" : required(args, "type")))
-            // The generated model defaults optional arrays to []; null is required for omission.
-            .instruments(null);
-        if (args.containsKey("instruments")) {
-          if (!(rawInstruments instanceof List<?> values) || values.isEmpty()
-              || values.stream().anyMatch(value -> !(value instanceof String))) {
-            throw new IllegalArgumentException("instruments must be a non-empty array of strings when provided");
+        String exchangeId = optional(args, "exchange");
+        String segment = optional(args, "segment");
+        LiveSourceRequest source = null;
+        if (exchangeId != null || segment != null) {
+          if (exchangeId == null || segment == null) {
+            throw new IllegalArgumentException("exchange and segment must be provided together for an initial source");
           }
-          source.instruments(values.stream().map(String.class::cast).toList());
+          source = liveSource(args, "start_live");
+        } else if (args.containsKey("venueType") || args.containsKey("instruments")
+            || args.containsKey("type")) {
+          throw new IllegalArgumentException("venueType, type, and instruments require an initial exchange and segment");
         }
-        if ("dex".equals(venueType) && (source.getType() != LiveSourceRequest.TypeEnum.KLINE
-            || source.getInstruments() == null || source.getInstruments().size() != 1
-            || !source.getInstruments().get(0).trim().matches("(?i)0x[0-9a-f]{40}"))) {
-          throw new IllegalArgumentException("DEX sources require type=kline and exactly one 0x pool address (40 hexadecimal digits)");
-        }
-        StartLiveRequest body = new StartLiveRequest().sources(List.of(source))
-            .relay(optionalBoolean(args, "relay", false));
+        StartLiveRequest body = new StartLiveRequest().relay(optionalBoolean(args, "relay", false))
+            // The generated request defaults this list to []; null omits it for a WAITING run.
+            .sources(source == null ? null : List.of(source));
         if (args.containsKey("sandbox")) body.sandbox(optionalBoolean(args, "sandbox", false));
         if (args.containsKey("stream")) body.stream(optionalBoolean(args, "stream", false));
         Integer sandboxMinutes = parseOptionalInteger(args.get("sandboxMinutes"), "sandboxMinutes");
@@ -1738,6 +1736,103 @@ public final class McpTools {
         return error("Failed to start live strategy: " + e.getMessage());
       }
     });
+  }
+
+  private static SyncToolSpecification attachLiveSource(BacktestingService service) {
+    Map<String, Object> sourceSchema = mapOf(
+        "type", "object",
+        "description", "One CEX instrument selection or one DEX pool source",
+        "properties", mapOf(
+            "venueType", prop("string", "cex (default) or dex"),
+            "exchange", prop("string", "Exchange id; must match the run's market feed"),
+            "segment", prop("string", "Market segment or DEX protocol"),
+            "type", prop("string", "ticker or kline; defaults to ticker"),
+            "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
+                "description", "Optional CEX symbols; DEX requires exactly one pool address")),
+        "required", List.of("exchange", "segment"));
+    Tool tool = Tool.builder().name("attach_live_source")
+        .description("Attach one source to an owned live run without stopping it. Sources on one run must use the same CEX exchange or DEX chain. The 202 response is acceptance only: poll get_live_run until the attachment is ATTACHED or REFUSED. A ref makes a retry idempotent.")
+        .inputSchema(schema(mapOf(
+            "runId", prop("string", "Owned live run id"),
+            "source", sourceSchema,
+            "warmFrom", prop("integer", "Optional replay seconds for this source, 0–3600"),
+            "ref", prop("string", "Optional idempotency reference, up to 64 characters")),
+            List.of("runId", "source"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        Map<String, Object> sourceArgs = objectMap(args.get("source"), "source");
+        LiveSourceRequest source = liveSource(sourceArgs, "source");
+        Integer warmFrom = parseOptionalInteger(args.get("warmFrom"), "warmFrom");
+        if (warmFrom != null && (warmFrom < 0 || warmFrom > 3600)) {
+          throw new IllegalArgumentException("warmFrom must be between 0 and 3600 seconds");
+        }
+        String ref = optional(args, "ref");
+        if (ref != null && ref.length() > 64) {
+          throw new IllegalArgumentException("ref must be at most 64 characters");
+        }
+        LiveAttachmentAccepted accepted = service.attachLiveSource(required(args, "runId"),
+            new AttachLiveSourceRequest().source(source).warmFrom(warmFrom).ref(ref));
+        return text(formatAttachmentAcceptance(accepted, "Attachment"));
+      } catch (IllegalArgumentException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Failed to attach live source: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification detachLiveSource(BacktestingService service) {
+    Tool tool = Tool.builder().name("detach_live_source")
+        .description("Detach one source from an owned live run without stopping it. The 202 response is acceptance only: poll get_live_run until it is DETACHED. Detaching the last source returns the run to WAITING; open paper positions from that source are reported as gaps.")
+        .inputSchema(schema(mapOf(
+            "runId", prop("string", "Owned live run id"),
+            "attachmentId", prop("string", "Attachment id from attach_live_source or get_live_run")),
+            List.of("runId", "attachmentId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        LiveAttachmentAccepted accepted = service.detachLiveSource(required(args, "runId"),
+            required(args, "attachmentId"));
+        return text(formatAttachmentAcceptance(accepted, "Detach"));
+      } catch (IllegalArgumentException e) {
+        return error(e.getMessage());
+      } catch (Exception e) {
+        return error("Failed to detach live source: " + e.getMessage());
+      }
+    });
+  }
+
+  private static LiveSourceRequest liveSource(Map<String, Object> args, String context) {
+    String venueType = optional(args, "venueType") == null ? "cex"
+        : required(args, "venueType").trim().toLowerCase(Locale.ROOT);
+    LiveSourceRequest source = new LiveSourceRequest()
+        .venueType(LiveSourceRequest.VenueTypeEnum.fromValue(venueType))
+        .exchange(required(args, "exchange")).segment(required(args, "segment"))
+        .type(LiveSourceRequest.TypeEnum.fromValue(optional(args, "type") == null
+            ? "ticker" : required(args, "type")))
+        // The generated model defaults optional arrays to []; null is required for omission.
+        .instruments(null);
+    if (args.containsKey("instruments")) {
+      Object rawInstruments = args.get("instruments");
+      if (!(rawInstruments instanceof List<?> values) || values.isEmpty()
+          || values.stream().anyMatch(value -> !(value instanceof String))) {
+        throw new IllegalArgumentException(context + ".instruments must be a non-empty array of strings when provided");
+      }
+      source.instruments(values.stream().map(String.class::cast).toList());
+    }
+    if ("dex".equals(venueType) && (source.getType() != LiveSourceRequest.TypeEnum.KLINE
+        || source.getInstruments() == null || source.getInstruments().size() != 1
+        || !source.getInstruments().get(0).trim().matches("(?i)0x[0-9a-f]{40}"))) {
+      throw new IllegalArgumentException("DEX sources require type=kline and exactly one 0x pool address (40 hexadecimal digits)");
+    }
+    return source;
+  }
+
+  private static String formatAttachmentAcceptance(LiveAttachmentAccepted accepted, String action) {
+    return action + " " + accepted.getAttachmentId() + " is " + accepted.getState()
+        + (accepted.getEffectiveAtMs() == null ? "" : " effective at " + accepted.getEffectiveAtMs())
+        + ". Poll get_live_run before assuming the source change has taken effect.";
   }
 
   private static SyncToolSpecification getLive(BacktestingService service) {
@@ -2015,6 +2110,14 @@ public final class McpTools {
         + "\nupdatedAtMs=" + run.getUpdatedAtMs();
     if (run.getWarmFrom() != null) result += "\nWarm from: " + run.getWarmFrom() + " seconds";
     if (run.getSandboxMinutes() != null) result += "\nSandbox minutes: " + run.getSandboxMinutes();
+    if (run.getAttachments() != null && !run.getAttachments().isEmpty()) {
+      result += "\nAttachments:";
+      for (LiveAttachment attachment : run.getAttachments()) {
+        result += "\n- " + attachment.getAttachmentId() + " " + attachment.getState();
+        if (attachment.getReason() != null) result += " reason=" + attachment.getReason();
+        if (attachment.getMessage() != null) result += " — " + attachment.getMessage();
+      }
+    }
     if (run.getStats() != null) result += "\nStats: " + run.getStats();
     return result + (run.getReason() == null ? "" : "\nReason: " + run.getReason());
   }

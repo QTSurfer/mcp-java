@@ -5,6 +5,7 @@ import com.qtsurfer.api.sdk.auth.AuthOptions;
 import com.qtsurfer.api.sdk.auth.AuthenticatedClient;
 import com.qtsurfer.api.sdk.errors.QTSAuthError;
 import com.qtsurfer.api.client.model.AuthTokenError;
+import com.qtsurfer.api.client.model.AuthTokenRejected;
 import com.qtsurfer.mcp.service.BacktestingServiceStub;
 import com.qtsurfer.mcp.service.SdkBacktestingService;
 import org.slf4j.Logger;
@@ -110,10 +111,13 @@ public class Main {
         qts = authenticate(apikey, url);
       } catch (QTSAuthError e) {
         System.err.println("error: authentication failed: " + e.getMessage());
-        String hint = e.getAuthTokenError()
+        String hint = e.getAuthTokenRejected()
+            .map(AuthTokenRejected::getError)
+            .map(Main::authenticationHint)
+            .orElseGet(() -> e.getAuthTokenError()
             .map(AuthTokenError::getCode)
             .map(Main::authenticationHint)
-            .orElse("Verify QTSURFER_APIKEY is a valid, unrevoked API key for " + url);
+            .orElse("Verify QTSURFER_APIKEY is configured for " + url));
         System.err.println("       " + hint);
         return 3;
       }
@@ -137,6 +141,10 @@ public class Main {
       return "This deployment requires scopes: create an API key with at least one resource/action scope in the web app.";
     }
     return "Verify QTSURFER_APIKEY is a valid, unrevoked API key.";
+  }
+
+  static String authenticationHint(AuthTokenRejected.ErrorEnum error) {
+    return "Verify QTSURFER_APIKEY is present and valid; the API does not distinguish missing, unknown, revoked, or expired keys.";
   }
 
   /**

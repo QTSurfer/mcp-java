@@ -12,6 +12,8 @@ import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.AttachLiveSourceRequest;
+import com.qtsurfer.api.client.model.LiveAttachmentAccepted;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
@@ -299,6 +301,12 @@ public interface BacktestingService {
   AccountUsage getAccountUsage();
 
   LiveRunWithStream startLive(String strategyId, StartLiveRequest request);
+
+  /** Attach a source to a live run and return its asynchronous acceptance. */
+  LiveAttachmentAccepted attachLiveSource(String runId, AttachLiveSourceRequest request);
+
+  /** Detach a source from a live run and return its asynchronous acceptance. */
+  LiveAttachmentAccepted detachLiveSource(String runId, String attachmentId);
 
   LiveRunWithStream getLive(String strategyId);
 

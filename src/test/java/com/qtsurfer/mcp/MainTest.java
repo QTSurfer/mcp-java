@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.qtsurfer.api.client.model.AuthTokenError;
+import com.qtsurfer.api.client.model.AuthTokenRejected;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -107,8 +108,8 @@ class MainTest {
         .contains("requires scopes")
         .contains("at least one resource/action scope")
         .contains("web app");
-    assertThat(Main.authenticationHint(AuthTokenError.CodeEnum.INVALID_APIKEY))
-        .contains("valid, unrevoked API key");
+    assertThat(Main.authenticationHint(AuthTokenRejected.ErrorEnum.INVALID_CREDENTIALS))
+        .contains("missing, unknown, revoked, or expired");
   }
 
 }

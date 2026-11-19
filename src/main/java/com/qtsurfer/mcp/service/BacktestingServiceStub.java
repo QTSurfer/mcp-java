@@ -18,6 +18,9 @@ import com.qtsurfer.api.client.model.StrategyState;
 import com.qtsurfer.api.client.model.Account;
 import com.qtsurfer.api.client.model.AccountUsage;
 import com.qtsurfer.api.client.model.LiveListResponse;
+import com.qtsurfer.api.client.model.AttachLiveSourceRequest;
+import com.qtsurfer.api.client.model.LiveAttachment;
+import com.qtsurfer.api.client.model.LiveAttachmentAccepted;
 import com.qtsurfer.api.client.model.LiveParamsUpdateResult;
 import com.qtsurfer.api.client.model.LiveCommandResult;
 import com.qtsurfer.api.client.model.LiveRun;
@@ -102,6 +105,7 @@ public class BacktestingServiceStub implements BacktestingService {
   public Account getAccount() {
     return new Account().userId("stub-user").tier("free")
         .scopes(Map.of("exchanges", List.of("read"), "backtests", List.of("read", "execute")))
+        .apiKeyExpiresAt(OffsetDateTime.parse("2030-01-01T00:00:00Z"))
         .maxDatasets(10).maxDatasetBytes(1_000_000L).maxTotalStorageBytes(10_000_000L)
         .maxSweepCartesian(10_000).maxImportRangeHours(168);
   }
@@ -120,8 +124,9 @@ public class BacktestingServiceStub implements BacktestingService {
     String runId = "live-" + UUID.randomUUID().toString().substring(0, 8);
     LiveRunWithStream run = new LiveRunWithStream().strategyId(strategyId).runId(runId)
         .visibility(LiveRunWithStream.VisibilityEnum.PRIVATE).stage(LiveRunWithStream.StageEnum.SANDBOX)
-        .state("STARTING").desired(LiveRunWithStream.DesiredEnum.RUNNING)
-        .sources(request.getSources().stream().map(source -> new LiveSource()
+        .state(request.getSources() == null || request.getSources().isEmpty() ? "WAITING" : "STARTING")
+        .desired(LiveRunWithStream.DesiredEnum.RUNNING)
+        .sources(request.getSources() == null ? List.of() : request.getSources().stream().map(source -> new LiveSource()
             .venueType(LiveSource.VenueTypeEnum.fromValue(source.getVenueType().getValue()))
             .exchange(source.getExchange()).segment(source.getSegment())
             .type(LiveSource.TypeEnum.fromValue(source.getType().getValue()))
@@ -158,7 +163,42 @@ public class BacktestingServiceStub implements BacktestingService {
         .desired(LiveRunDetail.DesiredEnum.valueOf(run.getDesired().name())).reason(run.getReason())
         .sources(run.getSources()).params(run.getParams()).paramsVersion(run.getParamsVersion())
         .relay(run.getRelay()).startedAtMs(run.getStartedAtMs()).stats(run.getStats()).warmFrom(run.getWarmFrom())
-        .updatedAtMs(System.currentTimeMillis());
+        .updatedAtMs(System.currentTimeMillis()).attachments(run.getAttachments());
+  }
+
+  @Override
+  public LiveAttachmentAccepted attachLiveSource(String runId, AttachLiveSourceRequest request) {
+    LiveRunWithStream run = liveRuns.values().stream().filter(candidate -> runId.equals(candidate.getRunId()))
+        .findFirst().orElseThrow(() -> new IllegalArgumentException("No live run: " + runId));
+    long now = System.currentTimeMillis();
+    String attachmentId = "attachment-" + UUID.randomUUID().toString().substring(0, 8);
+    var requestedSource = request.getSource();
+    LiveSource source = new LiveSource()
+        .venueType(LiveSource.VenueTypeEnum.fromValue(requestedSource.getVenueType().getValue()))
+        .exchange(requestedSource.getExchange()).segment(requestedSource.getSegment())
+        .type(LiveSource.TypeEnum.fromValue(requestedSource.getType().getValue()))
+        .instruments(requestedSource.getInstruments() == null ? List.of() : requestedSource.getInstruments());
+    LiveAttachment attachment = new LiveAttachment().attachmentId(attachmentId).source(source)
+        .warmFrom(request.getWarmFrom()).ref(request.getRef()).state("ATTACHING")
+        .createdAtMs(now).effectiveAtMs(now + 5_000);
+    List<LiveAttachment> attachments = new ArrayList<>(run.getAttachments());
+    attachments.add(attachment);
+    run.attachments(attachments);
+    return new LiveAttachmentAccepted().attachmentId(attachmentId)
+        .state(LiveAttachmentAccepted.StateEnum.ATTACHING).effectiveAtMs(attachment.getEffectiveAtMs());
+  }
+
+  @Override
+  public LiveAttachmentAccepted detachLiveSource(String runId, String attachmentId) {
+    LiveRunWithStream run = liveRuns.values().stream().filter(candidate -> runId.equals(candidate.getRunId()))
+        .findFirst().orElseThrow(() -> new IllegalArgumentException("No live run: " + runId));
+    LiveAttachment attachment = run.getAttachments().stream()
+        .filter(candidate -> attachmentId.equals(candidate.getAttachmentId())).findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("No attachment: " + attachmentId));
+    long effectiveAtMs = System.currentTimeMillis() + 5_000;
+    attachment.state("DETACHING").reason("OWNER").effectiveAtMs(effectiveAtMs);
+    return new LiveAttachmentAccepted().attachmentId(attachmentId)
+        .state(LiveAttachmentAccepted.StateEnum.DETACHING).effectiveAtMs(effectiveAtMs);
   }
 
   @Override
