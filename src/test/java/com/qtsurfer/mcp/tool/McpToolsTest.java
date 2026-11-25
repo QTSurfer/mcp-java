@@ -62,15 +62,16 @@ class McpToolsTest {
   // ---- tool registration --------------------------------------------------
 
   @Test
-  void registersExactlyFortySixTools() {
-    assertThat(tools).hasSize(46);
+  void registersExactlyFiftyTwoTools() {
+    assertThat(tools).hasSize(52);
   }
 
   @Test
   void toolNamesAreCorrect() {
     var names = tools.stream().map(t -> t.tool().name()).toList();
     assertThat(names).containsExactlyInAnyOrder(
-        "version", "compile_strategy", "upload_dataset", "import_dataset", "list_datasets", "get_dataset", "get_dataset_upload", "get_dataset_import",
+        "version", "compile_strategy", "upload_dataset", "import_dataset", "list_datasets", "create_collection", "list_collections",
+        "get_collection", "update_collection", "delete_collection", "move_dataset", "get_dataset", "get_dataset_upload", "get_dataset_import",
         "finalize_dataset_upload", "delete_dataset", "list_exchanges", "list_instruments", "list_pools", "download_tickers",
         "download_klines", "submit_backtest",
         "get_job_status", "cancel_backtest", "get_equity_curve", "list_jobs",
@@ -84,7 +85,7 @@ class McpToolsTest {
   void accountToolsExposeLimitsAndSharedUsage() {
     assertThat(textOf(call("get_account", Map.of())))
         .contains("Account tier: free", "Shared storage max bytes: 10000000",
-            "Maximum Cartesian sweep combinations: 10000", "Maximum import range hours: 168",
+            "Maximum Cartesian sweep combinations: 10000", "Maximum DEX import range hours: 168",
             "Key scopes (enforced per protected operation):", "exchanges=[read]",
             "API key expires at: 2030-01-01T00:00Z");
     assertThat(textOf(call("get_account_usage", Map.of())))
@@ -206,6 +207,44 @@ class McpToolsTest {
     args.put("instruments", List.of("0x0000000000000000000000000000000000000001"));
     assertThat(call("start_live", args).isError()).isNotEqualTo(Boolean.TRUE);
     assertThat(service.getLastStartLiveRequest().getSources().get(0).getVenueType().getValue()).isEqualTo("dex");
+  }
+
+  @Test
+  void waitingParamsHaveNoEffectiveTimestamp() {
+    String strategyId = service.compileStrategy("public class Demo {}").strategyId();
+    call("start_live", Map.of("strategyId", strategyId));
+    String runId = service.getLive(strategyId).getRunId();
+
+    assertThat(textOf(call("update_live_params", Map.of("runId", runId, "params", Map.of("period", 12)))))
+        .contains("stored until the first source is attached").doesNotContain("effectiveAtMs=");
+  }
+
+  @Test
+  void solanaLiveSourcePreservesMintCase() {
+    String strategyId = service.compileStrategy("public class Demo {}").strategyId();
+    String mint = "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE";
+    assertThat(call("start_live", Map.of("strategyId", strategyId, "venueType", "dex",
+        "exchange", "solana", "segment", "pumpfun", "type", "kline", "instruments", List.of(mint))).isError())
+        .isNotEqualTo(Boolean.TRUE);
+    assertThat(service.getLastStartLiveRequest().getSources().get(0).getInstruments()).containsExactly(mint);
+  }
+
+  @Test
+  void collectionsMoveDatasetsAndKeepThemOnDelete() {
+    call("create_collection", Map.of("name", "Research", "description", "Drafts"));
+    String id = service.listCollections().get(0).getCollectionId();
+    var created = service.importDataset("BTC sample", "BTC/USDT",
+        "2026-11-01T00:00:00Z", "2026-11-02T00:00:00Z", "ethereum", null, null,
+        "0x0000000000000000000000000000000000000001");
+    assertThat(call("update_collection", Map.of("collectionId", id, "description", "")).isError())
+        .isNotEqualTo(Boolean.TRUE);
+    assertThat(service.getCollection(id).getDescription()).isNull();
+
+    assertThat(textOf(call("move_dataset", Map.of("datasetId", created.datasetId(), "collectionId", id))))
+        .contains("collectionId=" + id);
+    assertThat(textOf(call("list_datasets", Map.of("collectionId", id)))).contains(created.datasetId());
+    assertThat(call("delete_collection", Map.of("collectionId", id)).isError()).isNotEqualTo(Boolean.TRUE);
+    assertThat(textOf(call("list_datasets", Map.of("collectionId", "none")))).contains(created.datasetId());
   }
 
   @Test

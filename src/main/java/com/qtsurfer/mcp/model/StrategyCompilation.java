@@ -4,7 +4,13 @@ import java.util.List;
 
 /** A compiled strategy id, declared properties and required plan capabilities. */
 public record StrategyCompilation(
-    String strategyId, List<StrategyProperty> declaredProperties, List<String> requires) {
+    String strategyId, List<StrategyProperty> declaredProperties, List<String> requires,
+    String name, String language) {
+
+  /** Construct compilation metadata without optional source identity. */
+  public StrategyCompilation(String strategyId, List<StrategyProperty> declaredProperties, List<String> requires) {
+    this(strategyId, declaredProperties, requires, null, null);
+  }
 
   public StrategyCompilation(String strategyId, List<StrategyProperty> declaredProperties) {
     this(strategyId, declaredProperties, List.of());

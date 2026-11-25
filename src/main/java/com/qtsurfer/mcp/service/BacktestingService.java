@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.model.Collection;
+import com.qtsurfer.api.client.model.CollectionCreateRequest;
+import com.qtsurfer.api.client.model.CollectionUpdateRequest;
 import com.qtsurfer.api.client.model.DatasetImportRequest;
 import com.qtsurfer.api.client.model.PoolDetail;
 
@@ -72,6 +75,27 @@ public interface BacktestingService {
   List<DatasetSummary> listDatasets(boolean includeDeleted);
 
   default List<DatasetSummary> listDatasets() { return listDatasets(false); }
+
+  /** List caller-owned datasets for one collection, the root, or all collections. */
+  List<DatasetSummary> listDatasets(boolean includeDeleted, String collectionId);
+
+  /** Create an empty collection. */
+  Collection createCollection(CollectionCreateRequest request);
+
+  /** List dataset collections. */
+  List<Collection> listCollections();
+
+  /** Get one dataset collection. */
+  Collection getCollection(String collectionId);
+
+  /** Rename a collection or update its description. */
+  Collection updateCollection(String collectionId, CollectionUpdateRequest request);
+
+  /** Delete the folder and keep its datasets at the root. */
+  void deleteCollection(String collectionId);
+
+  /** Move one dataset or return it to the root when the collection ID is null. */
+  DatasetSummary moveDataset(String datasetId, String collectionId);
 
   /** Read one dataset owned by the authenticated caller. */
   Optional<DatasetSummary> getDataset(String datasetId);
@@ -330,4 +354,10 @@ public interface BacktestingService {
 
   LiveSignalPage getLiveSignals(String runId, Long sinceMs, String instrument,
       String cursor, Integer limit);
+
+  /** Read retained signals with a type filter, including system detach records. */
+  default LiveSignalPage getLiveSignals(String runId, Long sinceMs, String instrument,
+      String cursor, Integer limit, String type) {
+    return getLiveSignals(runId, sinceMs, instrument, cursor, limit);
+  }
 }

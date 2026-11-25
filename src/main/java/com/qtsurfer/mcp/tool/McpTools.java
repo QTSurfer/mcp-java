@@ -6,6 +6,10 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import com.qtsurfer.mcp.McpServerRunner;
+import com.qtsurfer.api.client.model.CexImportInstrumentUsage;
+import com.qtsurfer.api.client.model.Collection;
+import com.qtsurfer.api.client.model.CollectionCreateRequest;
+import com.qtsurfer.api.client.model.CollectionUpdateRequest;
 import com.qtsurfer.api.client.model.Exchange;
 import com.qtsurfer.api.client.invoker.ApiClient;
 import com.qtsurfer.api.client.model.DataSourceType;
@@ -120,6 +124,12 @@ public final class McpTools {
         uploadDataset(service),
         importDataset(service),
         listDatasets(service),
+        createCollection(service),
+        listCollections(service),
+        getCollection(service),
+        updateCollection(service),
+        deleteCollection(service),
+        moveDataset(service),
         getDataset(service),
         getDatasetUpload(service),
         getDatasetImport(service),
@@ -167,15 +177,17 @@ public final class McpTools {
 
   private static SyncToolSpecification compileStrategy(BacktestingService service) {
     Tool tool = Tool.builder().name("compile_strategy")
-        .description("Compile and register Java strategy source without starting a run. Returns the strategy id "
+        .description("Compile and register Java or QTScript strategy source without starting a run. Returns the strategy id "
             + "and the platform's best-effort declared @StrategyProperty metadata, suitable for choosing "
             + "submit_sweep parameter names, plus required plan capabilities such as indicators.pro.")
-        .inputSchema(schema(Map.of("strategyCode", prop("string", "Complete Java strategy source")),
+        .inputSchema(schema(Map.of("strategyCode", prop("string", "Complete Java or QTScript strategy source")),
             List.of("strategyCode"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         StrategyCompilation result = service.compileStrategy(required(request.arguments(), "strategyCode"));
         StringBuilder output = new StringBuilder("Strategy compiled. strategyId=").append(result.strategyId());
+        if (result.name() != null) output.append("\nName: ").append(result.name());
+        if (result.language() != null) output.append("\nLanguage: ").append(result.language());
         output.append("\nRequires: ")
             .append(result.requires().isEmpty() ? "none" : String.join(", ", result.requires()));
         if (result.declaredProperties().isEmpty()) {
@@ -246,7 +258,7 @@ public final class McpTools {
             + "when the plan includes that source's native rate and requires protocol and version. A cadence "
             + "outside the plan is a non-retryable 402. Solana supports candles only, uses the plan default "
             + "when cadence is omitted, and needs no protocol or version; pass its case-sensitive base58 pool address "
-            + "as written. Candle imports older than 180 days return 400 immediately. DEX candle bars can be absent "
+            + "as written. Older candle ranges can be refused. DEX candle bars can be absent "
             + "for intervals with no trades. The response reports the effective cadence when known. "
             + "Returns datasetId and importId; "
             + "poll get_dataset_import until READY before using the dataset in a run.")
@@ -256,6 +268,8 @@ public final class McpTools {
             "from", prop("string", "Inclusive ISO-8601 timestamp"),
             "to", prop("string", "Exclusive ISO-8601 timestamp"),
             "type", prop("string", "dex (default) or cex"),
+            "collectionId", prop("string", "Optional collection ID for the new dataset"),
+            "meta", prop("object", "Optional provenance fields in the pool.* or user.* namespaces"),
             "cadence", prop("string", "Optional plan cadence. Explicit cadence requests candles; omission uses the plan default"),
             "exchange", prop("string", "CEX exchange id from list_exchanges"),
             "segment", prop("string", "CEX import segment, currently spot"),
@@ -272,7 +286,16 @@ public final class McpTools {
         DatasetImportRequest body = new DatasetImportRequest().name(required(args, "name"))
             .instrument(required(args, "instrument"))
             .from(OffsetDateTime.parse(required(args, "from"))).to(OffsetDateTime.parse(required(args, "to")))
-            .type(DatasetImportRequest.TypeEnum.fromValue(type));
+            .type(DatasetImportRequest.TypeEnum.fromValue(type))
+            .collectionId(optional(args, "collectionId"));
+        if (args.containsKey("meta")) {
+          Map<String, String> meta = new LinkedHashMap<>();
+          objectMap(args.get("meta"), "meta").forEach((key, value) -> {
+            if (!(value instanceof String text)) throw new IllegalArgumentException("meta values must be strings");
+            meta.put(key, text);
+          });
+          body.meta(meta);
+        }
         String cadence = optional(args, "cadence");
         if (cadence != null) {
           body.cadence(DatasetImportRequest.CadenceEnum.fromValue(cadence));
@@ -306,7 +329,12 @@ public final class McpTools {
       } catch (QTSError e) {
         String upgrade = e.getUpgradeUrl().map(uri -> " Upgrade plan: " + uri).orElse("");
         String noRetry = e.getPlanRequiredError().isPresent() ? " This plan refusal is not retryable." : "";
-        return error("Failed to start dataset import: " + e.getMessage() + noRetry + upgrade);
+        String reason = e.getReason().map(value -> " reason=" + value).orElse("");
+        String retryable = e.getRetryable().map(value -> " retryable=" + value).orElse("");
+        String retryAfter = e.getResponseHeaders().flatMap(headers -> headers.firstValue("Retry-After"))
+            .map(value -> " Retry-After=" + value).orElse("");
+        return error("Failed to start dataset import: " + e.getMessage() + reason + retryable + retryAfter
+            + noRetry + upgrade);
       } catch (Exception e) {
         return error("Failed to start dataset import: " + e.getMessage());
       }
@@ -324,18 +352,130 @@ public final class McpTools {
         .description("List datasets owned by the authenticated account. A dataset becomes runnable only "
             + "after get_dataset_upload reports READY with a version. Set includeDeleted=true to also "
             + "include deleted datasets marked with deletedAt for local catalogue reconciliation.")
-        .inputSchema(schema(Map.of("includeDeleted",
-            prop("boolean", "Also include deleted datasets; defaults to false")), List.of())).build();
+        .inputSchema(schema(Map.of(
+            "includeDeleted", prop("boolean", "Also include deleted datasets; defaults to false"),
+            "collectionId", prop("string", "Collection ID, none for root, or omit for all datasets")),
+            List.of())).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
       try {
         boolean includeDeleted = optionalBoolean(request.arguments(), "includeDeleted", false);
-        List<DatasetSummary> datasets = service.listDatasets(includeDeleted);
+        String collectionId = optional(request.arguments(), "collectionId");
+        List<DatasetSummary> datasets = collectionId == null ? service.listDatasets(includeDeleted)
+            : service.listDatasets(includeDeleted, collectionId);
         if (datasets.isEmpty()) return text("No datasets found for this account.");
         return text(datasets.stream().map(McpTools::formatDataset).collect(java.util.stream.Collectors.joining("\n")));
       } catch (Exception e) {
         return error("Failed to list datasets: " + e.getMessage());
       }
     });
+  }
+
+  private static SyncToolSpecification createCollection(BacktestingService service) {
+    Tool tool = Tool.builder().name("create_collection")
+        .description("Create a dataset collection with a unique name.")
+        .inputSchema(schema(Map.of("name", prop("string", "Collection name"),
+            "description", prop("string", "Optional description")), List.of("name"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        return text(formatCollection(service.createCollection(new CollectionCreateRequest()
+            .name(required(args, "name")).description(optional(args, "description")))));
+      } catch (Exception e) {
+        return error("create_collection failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification listCollections(BacktestingService service) {
+    Tool tool = Tool.builder().name("list_collections")
+        .description("List the caller’s dataset collections and their dataset counts.")
+        .inputSchema(schema(Map.of(), List.of())).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        List<Collection> collections = service.listCollections();
+        if (collections.isEmpty()) return text("No dataset collections.");
+        return text(collections.stream().map(McpTools::formatCollection)
+            .collect(java.util.stream.Collectors.joining("\n")));
+      } catch (Exception e) {
+        return error("list_collections failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification getCollection(BacktestingService service) {
+    Tool tool = Tool.builder().name("get_collection")
+        .description("Read a dataset collection and its dataset counts.")
+        .inputSchema(schema(Map.of("collectionId", prop("string", "Collection ID")), List.of("collectionId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        return text(formatCollection(service.getCollection(required(args, "collectionId"))));
+      } catch (Exception e) {
+        return error("get_collection failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification updateCollection(BacktestingService service) {
+    Tool tool = Tool.builder().name("update_collection")
+        .description("Rename a dataset collection, or update its description. Set description to an empty string to clear it.")
+        .inputSchema(schema(Map.of("collectionId", prop("string", "Collection ID"),
+            "name", prop("string", "New name"), "description", prop("string", "New description or empty string to clear")), List.of("collectionId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        String name = optional(args, "name");
+        Object rawDescription = args.get("description");
+        if (rawDescription != null && !(rawDescription instanceof String)) {
+          throw new IllegalArgumentException("description must be a string");
+        }
+        String description = (String) rawDescription;
+        if (name == null && description == null) throw new IllegalArgumentException("Supply name or description");
+        var body = new CollectionUpdateRequest().name(name).description(description);
+        return text(formatCollection(service.updateCollection(required(args, "collectionId"), body)));
+      } catch (Exception e) {
+        return error("update_collection failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification deleteCollection(BacktestingService service) {
+    Tool tool = Tool.builder().name("delete_collection")
+        .description("Delete a collection and return its datasets to the root. The datasets are kept.")
+        .inputSchema(schema(Map.of("collectionId", prop("string", "Collection ID")), List.of("collectionId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        String id = required(args, "collectionId");
+        service.deleteCollection(id);
+        return text("Deleted collection " + id + "; its datasets are at the root.");
+      } catch (Exception e) {
+        return error("delete_collection failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static SyncToolSpecification moveDataset(BacktestingService service) {
+    Tool tool = Tool.builder().name("move_dataset")
+        .description("Move a dataset to a collection or return it to the root if collectionId is omitted.")
+        .inputSchema(schema(Map.of("datasetId", prop("string", "Dataset ID"),
+            "collectionId", prop("string", "Destination collection ID; omit for root")), List.of("datasetId"))).build();
+    return new SyncToolSpecification(tool, (exchange, request) -> {
+      try {
+        Map<String, Object> args = request.arguments();
+        return text(formatDataset(service.moveDataset(required(args, "datasetId"), optional(args, "collectionId"))));
+      } catch (Exception e) {
+        return error("move_dataset failed: " + e.getMessage());
+      }
+    });
+  }
+
+  private static String formatCollection(Collection collection) {
+    return "Collection " + collection.getCollectionId() + ": " + collection.getName()
+        + " | datasets=" + collection.getDatasetCount()
+        + (collection.getDatasetCountByType() == null || collection.getDatasetCountByType().isEmpty()
+            ? "" : " | byType=" + collection.getDatasetCountByType())
+        + (collection.getDescription() == null ? "" : " | description=" + collection.getDescription());
   }
 
   private static SyncToolSpecification getDataset(BacktestingService service) {
@@ -435,6 +575,8 @@ public final class McpTools {
         + " | currentVersion=" + valueOrUnknown(dataset.currentVersionId()) + " | range="
         + valueOrUnknown(dataset.from()) + " → " + valueOrUnknown(dataset.to()) + " | cadence="
         + valueOrUnknown(dataset.cadence()) + " | dataFormat=" + valueOrUnknown(dataset.dataFormat())
+        + (dataset.collectionId() == null ? "" : " | collectionId=" + dataset.collectionId())
+        + (dataset.meta() == null || dataset.meta().isEmpty() ? "" : " | meta=" + dataset.meta())
         + (dataset.deletedAt() == null ? "" : " | deletedAt=" + dataset.deletedAt());
   }
 
@@ -551,10 +693,9 @@ public final class McpTools {
 
   private static SyncToolSpecification listPools(BacktestingService service) {
     Tool tool = Tool.builder().name("list_pools")
-        .description("Discover DEX pools for a chain/protocol from list_exchanges. Returns the 50 highest-volume "
-            + "pools with at least USD 10,000 liquidity, refreshed hourly. Use id (pool address), not symbol, "
-            + "with start_live venueType=dex and type=kline. Valid unlisted pools may also run. "
-            + "Absent price, quote volume or creation time means unknown; volume24h is in quote tokens.")
+        .description("Discover DEX pools for a chain/protocol from list_exchanges. Use the address in id, "
+            + "preserving case on Solana. For a Solana live run use a token mint in the pumpfun segment. "
+            + "Absent fee, price, quote volume or creation time means unknown; volume24h is in quote tokens.")
         .inputSchema(schema(Map.of("exchangeId", prop("string", "DEX chain id, e.g. robinhood"),
             "segment", prop("string", "Protocol, e.g. uniswap-v3; defaults to the venue's first segment")),
             List.of("exchangeId"))).build();
@@ -606,7 +747,7 @@ public final class McpTools {
     Tool tool = Tool.builder().name(name)
         .description("Stream exactly one UTC hour of " + kind + " to a local file beneath the "
             + "server operator's configured download root, on the server running MCP rather than the "
-            + "caller's workstation. hour is YYYY-MM-DDTHH within the last 7 days; older hours return "
+            + "caller's workstation. hour is YYYY-MM-DDTHH within the recent download window; older hours return "
             + "OUTSIDE_WINDOW and a suggested HTTP import call (method/path/body); translate its body "
             + "into import_dataset arguments if you choose to import. Recent hours may be provisional or "
             + "NOT_YET_AVAILABLE; honour Retry-After for that reason and 503 TEMPORARILY_UNAVAILABLE. "
@@ -619,7 +760,7 @@ public final class McpTools {
             "exchangeId", prop("string", "Exchange id, e.g. binance"),
             "base", prop("string", "Base asset symbol, e.g. BTC"),
             "quote", prop("string", "Quote asset symbol, e.g. USDT"),
-            "hour", prop("string", "UTC hour in YYYY-MM-DDTHH form within the last 7 days"),
+            "hour", prop("string", "UTC hour in YYYY-MM-DDTHH form within the recent download window"),
             "format", prop("string", "Optional output format: lastra (default) or parquet"),
             "outputPath", prop("string", "Relative output file beneath the configured download root"),
             "overwrite", prop("boolean", "Replace an existing regular file atomically; default false")),
@@ -1460,6 +1601,8 @@ public final class McpTools {
                 "Registered strategies (" + strategies.size() + "):\n");
             strategies.forEach(s -> {
               sb.append("- ").append(s.getStrategyId());
+              if (s.getName() != null) sb.append("  name=").append(s.getName());
+              if (s.getLanguage() != null) sb.append("  language=").append(s.getLanguage().getValue());
               if (s.getDeletedAt() != null) sb.append("  deleted ").append(s.getDeletedAt());
               if (s.getCompiledAt() != null) {
                 sb.append("  compiled ").append(s.getCompiledAt());
@@ -1530,6 +1673,8 @@ public final class McpTools {
   private static String formatStrategyState(com.qtsurfer.api.client.model.StrategyState state) {
     StringBuilder text = new StringBuilder("Strategy ").append(state.getStrategyId())
         .append("\nValidation: ").append(state.getValidation());
+    if (state.getName() != null) text.append("\nName: ").append(state.getName());
+    if (state.getLanguage() != null) text.append("\nLanguage: ").append(state.getLanguage().getValue());
     if (state.getCompiledAt() != null) text.append("\nCompiled: ").append(state.getCompiledAt());
     if (state.getValidatedAt() != null) text.append("\nValidated: ").append(state.getValidatedAt());
     if (state.getRequiredSources() != null && !state.getRequiredSources().isEmpty()) {
@@ -1619,7 +1764,12 @@ public final class McpTools {
             + "Datasets max: " + account.getMaxDatasets() + "\n"
             + "Dataset max bytes: " + account.getMaxDatasetBytes() + "\n"
             + "Maximum Cartesian sweep combinations: " + account.getMaxSweepCartesian() + "\n"
-            + "Maximum import range hours: " + account.getMaxImportRangeHours() + "\n"
+            + "Maximum DEX import range hours: " + valueOrUnknown(account.getMaxImportRangeHours()) + "\n"
+            + "Maximum CEX import range hours: " + valueOrUnknown(account.getMaxCexImportRangeHours()) + "\n"
+            + "Maximum concurrent imports: " + valueOrUnknown(account.getMaxConcurrentImports()) + "\n"
+            + "Maximum CEX history days: " + valueOrUnknown(account.getMaxCexHistoryDays()) + "\n"
+            + "Maximum CEX import instruments per market per month: "
+            + valueOrUnknown(account.getMaxCexImportInstrumentsPerMonth()) + "\n"
             + "Shared storage max bytes: " + account.getMaxTotalStorageBytes());
       } catch (Exception e) {
         return error("Failed to read account limits: " + e.getMessage());
@@ -1640,7 +1790,12 @@ public final class McpTools {
             + "Datasets: " + usage.getDatasetsUsed() + " (" + usage.getDatasetBytesUsed() + " bytes)\n"
             + "Strategies: " + usage.getStrategiesUsed() + " (" + usage.getStrategyBytesUsed() + " bytes)\n"
             + "Signals: " + usage.getSignalsUsed() + " (" + usage.getSignalBytesUsed() + " bytes)\n"
-            + "Shared storage: " + usage.getStorageBytesUsed() + " bytes");
+            + "Shared storage: " + usage.getStorageBytesUsed() + " bytes"
+            + (usage.getCexImportMonth() == null ? "" : "\nCEX instruments imported in "
+                + usage.getCexImportMonth() + ": " + (usage.getCexImportInstruments() == null
+                    ? List.<CexImportInstrumentUsage>of() : usage.getCexImportInstruments()).stream()
+                    .map(item -> item.getExchange() + "/" + item.getSegment() + "=" + item.getUsed())
+                    .collect(java.util.stream.Collectors.joining(", "))));
       } catch (Exception e) {
         return error("Failed to read account usage: " + e.getMessage());
       }
@@ -1651,7 +1806,7 @@ public final class McpTools {
     Tool tool = Tool.builder().name("start_live")
         .description("Start a registered strategy on a CEX feed or one DEX pool, or start it with no source so it waits in WAITING. "
             + "exchange and segment must be supplied together to attach one initial source; venueType defaults to cex. "
-            + "DEX requires type=kline and exactly one 0x pool address; omission and wildcards are invalid. "
+            + "DEX requires type=kline and one pool address (EVM) or a base58 mint (Solana); omission and wildcards are invalid. "
             + "Pick exchange/segment from list_exchanges liveSegments. A first run "
             + "begins in SANDBOX; a compilation starts directly in LIVE after an earlier run was "
             + "promoted and none were stopped for exceeding resource limits, unless sandbox=true "
@@ -1748,14 +1903,15 @@ public final class McpTools {
             "segment", prop("string", "Market segment or DEX protocol"),
             "type", prop("string", "ticker or kline; defaults to ticker"),
             "instruments", Map.of("type", "array", "items", Map.of("type", "string"),
-                "description", "Optional CEX symbols; DEX requires exactly one pool address")),
+                "description", "Optional CEX symbols; DEX requires exactly one EVM pool address or Solana mint")),
         "required", List.of("exchange", "segment"));
     Tool tool = Tool.builder().name("attach_live_source")
-        .description("Attach one source to an owned live run without stopping it. Sources on one run must use the same CEX exchange or DEX chain. The 202 response is acceptance only: poll get_live_run until the attachment is ATTACHED or REFUSED. A ref makes a retry idempotent.")
+        .description("Attach one source to an owned live run without stopping it. Sources on one run must use the same CEX exchange or DEX chain. The 202 response is acceptance only: poll get_live_run before using the source. For a second DEX source, omit warmFrom or set it to 0. A ref makes a retry idempotent.")
         .inputSchema(schema(mapOf(
             "runId", prop("string", "Owned live run id"),
             "source", sourceSchema,
             "warmFrom", prop("integer", "Optional replay seconds for this source, 0–3600"),
+            "resolveInstrument", prop("boolean", "DEX only; wait for first candle to resolve the pair (default true), or use a stand-in immediately"),
             "ref", prop("string", "Optional idempotency reference, up to 64 characters")),
             List.of("runId", "source"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
@@ -1772,7 +1928,8 @@ public final class McpTools {
           throw new IllegalArgumentException("ref must be at most 64 characters");
         }
         LiveAttachmentAccepted accepted = service.attachLiveSource(required(args, "runId"),
-            new AttachLiveSourceRequest().source(source).warmFrom(warmFrom).ref(ref));
+            new AttachLiveSourceRequest().source(source).warmFrom(warmFrom).ref(ref)
+                .resolveInstrument(optionalBoolean(args, "resolveInstrument", true)));
         return text(formatAttachmentAcceptance(accepted, "Attachment"));
       } catch (IllegalArgumentException e) {
         return error(e.getMessage());
@@ -1821,10 +1978,15 @@ public final class McpTools {
       }
       source.instruments(values.stream().map(String.class::cast).toList());
     }
-    if ("dex".equals(venueType) && (source.getType() != LiveSourceRequest.TypeEnum.KLINE
-        || source.getInstruments() == null || source.getInstruments().size() != 1
-        || !source.getInstruments().get(0).trim().matches("(?i)0x[0-9a-f]{40}"))) {
-      throw new IllegalArgumentException("DEX sources require type=kline and exactly one 0x pool address (40 hexadecimal digits)");
+    if ("dex".equals(venueType)) {
+      boolean solana = "solana".equalsIgnoreCase(source.getExchange());
+      String pattern = solana ? "[1-9A-HJ-NP-Za-km-z]{32,44}" : "(?i)0x[0-9a-f]{40}";
+      if (source.getType() != LiveSourceRequest.TypeEnum.KLINE
+          || source.getInstruments() == null || source.getInstruments().size() != 1
+          || !source.getInstruments().get(0).matches(pattern)) {
+        throw new IllegalArgumentException("DEX sources require type=kline and exactly one "
+            + (solana ? "case-sensitive Solana base58 mint" : "0x pool address (40 hexadecimal digits)"));
+      }
     }
     return source;
   }
@@ -1995,7 +2157,7 @@ public final class McpTools {
     Tool tool = Tool.builder().name("update_live_params")
         .description("Update active strategy parameters for a live run. params must be a non-empty "
             + "object containing only properties declared by the strategy; the update takes effect "
-            + "at the next event boundary. This does not start or stop the run.")
+            + "at the next event boundary or is stored until the first source is attached to a WAITING run.")
         .inputSchema(schema(Map.of("runId", prop("string", "Live run id"),
             "params", prop("object", "Non-empty map of declared strategy property names to values")),
             List.of("runId", "params"))).build();
@@ -2005,8 +2167,10 @@ public final class McpTools {
         if (params == null || params.isEmpty()) throw new IllegalArgumentException("params must not be empty");
         LiveParamsUpdateResult update = service.updateLiveParams(
             required(request.arguments(), "runId"), params);
-        return text("Parameters queued for run " + update.getRunId() + "; paramsVersion="
-            + update.getParamsVersion() + ", effectiveAtMs=" + update.getEffectiveAtMs());
+        return text("Parameters updated for run " + update.getRunId() + "; paramsVersion="
+            + update.getParamsVersion() + (update.getEffectiveAtMs() == null
+                ? " (stored until the first source is attached)"
+                : ", effectiveAtMs=" + update.getEffectiveAtMs()));
       } catch (Exception e) {
         return error("Failed to update live parameters: " + e.getMessage());
       }
@@ -2047,11 +2211,12 @@ public final class McpTools {
         .description("Read retained signals oldest-first. Omit cursor for the first page; when "
             + "nextCursor is returned, pass it unchanged to fetch the next page. cursor takes "
             + "precedence over sinceMs. Use sinceMs for an initial time-based read and optionally "
-            + "filter by instrument. Retention advances; if a cursor expires, restart from the "
+            + "filter by instrument or type. Use type=system for strategy detach records. Retention advances; if a cursor expires, restart from the "
             + "availableSinceMs reported by the API. Signal relay must have been enabled on the run.")
         .inputSchema(schema(mapOf("runId", prop("string", "Live run id"),
             "sinceMs", prop("integer", "Initial inclusive event timestamp in epoch milliseconds"),
             "instrument", prop("string", "Optional instrument filter"),
+            "type", prop("string", "Optional signal type, for example system for strategy detach"),
             "cursor", prop("string", "Opaque continuation cursor; takes precedence over sinceMs"),
             "limit", prop("integer", "Page size; API default applies when omitted")), List.of("runId"))).build();
     return new SyncToolSpecification(tool, (exchange, request) -> {
@@ -2061,15 +2226,18 @@ public final class McpTools {
         if (limit != null) limit = Math.min(100, Math.max(1, limit));
         LiveSignalPage page = service.getLiveSignals(required(args, "runId"),
             asLong(args.get("sinceMs")), optional(args, "instrument"), optional(args, "cursor"),
-            limit);
+            limit, optional(args, "type"));
         StringBuilder result = new StringBuilder("Retained signals (oldest first):\n");
         if (page.getSignals().isEmpty()) result.append("None.\n");
         for (LiveSignal signal : page.getSignals()) {
           result.append("- signalId=").append(signal.getSignalId()).append(" eventTsMs=")
               .append(signal.getEventTsMs()).append(" type=").append(signal.getType())
               .append(" kind=").append(signal.getKind()).append(" instrument=")
-              .append(signal.getInstrument() == null ? "unknown" : signal.getInstrument().getSymbol())
-              .append(" data=").append(signal.getData()).append('\n');
+              .append(signal.getInstrument() == null ? "unknown" : signal.getInstrument().getSymbol());
+          if (signal.getInstrument() != null && signal.getInstrument().getId() != null) {
+            result.append(" instrumentId=").append(signal.getInstrument().getId());
+          }
+          result.append(" data=").append(signal.getData()).append('\n');
         }
         if (page.getAvailableSinceMs() != null) {
           result.append("availableSinceMs=").append(page.getAvailableSinceMs()).append('\n');

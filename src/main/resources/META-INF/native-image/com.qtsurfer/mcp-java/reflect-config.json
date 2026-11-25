@@ -2831,5 +2831,14 @@
   },
   {
     "name": "tools.jackson.databind.ser.Serializers[]"
-  }
+  },
+  { "name": "com.qtsurfer.api.client.model.CexImportInstrumentUsage", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.Collection", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.CollectionList", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.CollectionCreateRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.CollectionUpdateRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.CollectionDeleted", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.CollectionDeleted$DeletedEnum", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.DatasetMoveRequest", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true },
+  { "name": "com.qtsurfer.api.client.model.StrategyLanguage", "allDeclaredConstructors": true, "allDeclaredMethods": true, "allDeclaredFields": true }
 ]

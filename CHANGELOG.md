@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.27.0] — 2026-11-25
+
+### Added ✨
+
+- Manage dataset collections with `create_collection`, `list_collections`, `get_collection`,
+  `update_collection`, and `delete_collection`. Use `move_dataset` to file a dataset or move it
+  back to the root. `list_datasets` accepts a collection filter, and dataset and account results
+  expose import provenance and CEX quotas.
+- Report strategy name and language, accept Solana mints for live sources, and filter retained
+  signals for system detach records.
+
+### Changed 🔄
+
+- Expose DEX attachment resolution and explain parameter updates on waiting runs.
+- Adopt SDK Java 0.41.0 and OpenAPI 0.128.70.
+
 ## [0.26.0] — 2026-11-19
 
 ### Added ✨

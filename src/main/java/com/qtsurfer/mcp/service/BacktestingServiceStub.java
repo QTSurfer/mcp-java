@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.model.Collection;
+import com.qtsurfer.api.client.model.CollectionCreateRequest;
+import com.qtsurfer.api.client.model.CollectionUpdateRequest;
 import com.qtsurfer.api.client.model.DatasetImportRequest;
 import com.qtsurfer.api.client.model.PoolDetail;
 
@@ -60,6 +63,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +93,7 @@ public class BacktestingServiceStub implements BacktestingService {
   private final Map<String, JobSummary> jobs = new ConcurrentHashMap<>();
   private final Map<String, ExecuteSweepResult> sweeps = new ConcurrentHashMap<>();
   private final Map<String, SweepSensitivity> sensitivities = new ConcurrentHashMap<>();
+  private final Map<String, Collection> collections = new ConcurrentHashMap<>();
   private final Map<String, StrategySummary> strategies = new ConcurrentHashMap<>();
   private final Map<String, String> strategySource = new ConcurrentHashMap<>();
   private final Map<String, DatasetSummary> datasets = new ConcurrentHashMap<>();
@@ -258,7 +263,7 @@ public class BacktestingServiceStub implements BacktestingService {
         .findFirst().orElseThrow(() -> new IllegalArgumentException("No live run: " + runId));
     run.params(params).paramsVersion(run.getParamsVersion() + 1);
     return new LiveParamsUpdateResult().runId(runId).paramsVersion(run.getParamsVersion())
-        .effectiveAtMs(System.currentTimeMillis());
+        .effectiveAtMs("WAITING".equals(run.getState()) ? null : System.currentTimeMillis());
   }
 
   @Override
@@ -292,7 +297,66 @@ public class BacktestingServiceStub implements BacktestingService {
 
   @Override
   public List<DatasetSummary> listDatasets(boolean includeDeleted) {
-    return new ArrayList<>(datasets.values());
+    return listDatasets(includeDeleted, null);
+  }
+
+  @Override
+  public List<DatasetSummary> listDatasets(boolean includeDeleted, String collectionId) {
+    return datasets.values().stream().filter(dataset -> collectionId == null
+        || ("none".equals(collectionId) ? dataset.collectionId() == null
+            : collectionId.equals(dataset.collectionId()))).toList();
+  }
+
+  @Override
+  public Collection createCollection(CollectionCreateRequest request) {
+    OffsetDateTime now = OffsetDateTime.now();
+    String id = "dc-" + UUID.randomUUID();
+    var collection = new Collection().collectionId(id).name(request.getName())
+        .description(request.getDescription()).datasetCount(0).createdAt(now).updatedAt(now);
+    collections.put(id, collection);
+    return collection;
+  }
+
+  @Override
+  public List<Collection> listCollections() {
+    return collections.keySet().stream().map(this::getCollection)
+        .sorted(Comparator.comparing(Collection::getName)).toList();
+  }
+
+  @Override
+  public Collection getCollection(String collectionId) {
+    Collection collection = collections.get(collectionId);
+    if (collection == null) throw new IllegalArgumentException("No such collection: " + collectionId);
+    return collection.datasetCount(listDatasets(false, collectionId).size());
+  }
+
+  @Override
+  public Collection updateCollection(String collectionId, CollectionUpdateRequest request) {
+    Collection collection = getCollection(collectionId);
+    if (request.getName() != null) collection.name(request.getName());
+    if (request.getDescription() != null) {
+      collection.description(request.getDescription().isBlank() ? null : request.getDescription());
+    }
+    return collection.updatedAt(OffsetDateTime.now());
+  }
+
+  @Override
+  public void deleteCollection(String collectionId) {
+    getCollection(collectionId);
+    collections.remove(collectionId);
+    for (DatasetSummary dataset : listDatasets(false, collectionId)) moveDataset(dataset.datasetId(), null);
+  }
+
+  @Override
+  public DatasetSummary moveDataset(String datasetId, String collectionId) {
+    if (collectionId != null) getCollection(collectionId);
+    DatasetSummary current = datasets.get(datasetId);
+    if (current == null) throw new IllegalArgumentException("No such dataset: " + datasetId);
+    var moved = new DatasetSummary(current.datasetId(), current.name(), current.instrument(),
+        current.type(), current.currentVersionId(), current.from(), current.to(), current.cadence(),
+        current.dataFormat(), current.deletedAt(), collectionId, current.meta());
+    datasets.put(datasetId, moved);
+    return moved;
   }
 
   @Override

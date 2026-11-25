@@ -167,7 +167,9 @@ MCP transport: stdio (stdin/stdout JSON-RPC 2.0)
 |------|-------------|
 | `upload_dataset` | Atomically create or version a dataset, stream a guarded local CSV or Parquet file and start ingest; never exposes a presigned URL |
 | `import_dataset` / `get_dataset_import` | Import CEX market history or DEX pool history (including candle-only Solana pools) and poll its asynchronous fetch and ingest state |
-| `list_datasets` / `get_dataset` | List datasets (optionally including deleted entries) or read one dataset's metadata and current version |
+| `list_datasets` / `get_dataset` | List datasets with optional collection and deletion filters, or read metadata and the ready version |
+| `create_collection` / `list_collections` / `get_collection` | Create and inspect dataset folders |
+| `update_collection` / `delete_collection` / `move_dataset` | Manage folders and move their datasets |
 | `get_dataset_upload` | Poll the asynchronous ingest after an upload |
 | `finalize_dataset_upload` | Retry finalization after a successful PUT whose original MCP response was lost |
 | `delete_dataset` | Delete a caller-owned dataset and its versions |
@@ -229,10 +231,9 @@ that its segment is live-enabled. Use `list_instruments` for CEX and `list_pools
 ```
 
 Pass this object to `list_pools`. Omit `segment` to select the venue's first protocol.
-The catalogue contains at most 50 pools, ranked by 24-hour USD volume, with at least
-$10,000 liquidity and hourly refreshes. Unknown prices, volumes and creation dates are absent,
-not zero. `volume24h` is in quote tokens; `volume24hUsd` is in USD. Use a pool's `id`
-(its address), not its `symbol`, when starting a live run; a valid unlisted pool may run too.
+The catalogue ranks eligible pools by recent volume. Solana pool addresses are case sensitive.
+Unknown fees, prices, volumes and creation dates are absent. `volume24h` is in quote tokens and
+`volume24hUsd` is in USD. A Solana live run uses the token mint in the `pumpfun` segment.
 DEX catalogues cannot be passed directly to managed-data preparation or backtesting.
 
 ### Live execution
@@ -267,7 +268,8 @@ not put it in logs or untrusted prompts. `venueType` defaults to `cex`; CEX `ins
 may include `*` on either side only if the account tier allows wildcard selection. `stop_live` takes
 `strategyId` and returns the desired stop state; poll `get_live` until actual state settles.
 
-For DEX, set `venueType=dex`, `type=kline`, and exactly one pool address in `instruments`;
+For DEX, use `venueType=dex` and `type=kline`. Supply one EVM pool address, or a
+case-sensitive base58 token mint for `exchange=solana` and `segment=pumpfun`, in `instruments`;
 omission and wildcards are invalid. Select `exchange` and `segment` from discovery, not by
 guessing a chain/protocol tuple. For example, after choosing an actual discovered pool:
 
@@ -285,8 +287,7 @@ guessing a chain/protocol tuple. For example, after choosing an actual discovere
 Replace the example address with the chosen pool's `id`. Invalid tuples are rejected;
 pool-resolution or capacity failures during startup settle as `FAILED` with desired state
 `STOPPED`, without reserving a live slot. Poll the returned state rather than assuming acceptance
-means the run is running. Warm-up replay runs at roughly six times normal speed; a full
-3,600-second warm-up can take about ten minutes.
+means the run is running.
 
 Use `list_live` for all owned runs (including sandbox/stopped); `list_public_live` is a different
 catalog containing only public runs currently running and never exposes their owner/strategy.
@@ -295,18 +296,24 @@ unchanged to fetch the next page.
 
 `list_datasets` and `list_strategies` default to active entries; set `includeDeleted=true` to include
 soft-deleted entries marked with `deletedAt`. `get_account` reports `maxSweepCartesian`, the
-maximum allowed Cartesian combination count for a sweep.
+maximum allowed Cartesian combination count for a sweep. Dataset listing accepts a collection ID
+or `none` for the root. Deleting a collection returns its datasets to the root.
+A parameter update on a `WAITING` run stores values for its first source and has no effective time.
+Signal channel publishing, offers, codes and subscriptions are available in the generated Java
+client. The MCP tools cover owned live runs and their retained signals.
 
 `get_live_run` takes the canonical `runId` and adds `updatedAtMs` plus optional current counters to
 the normal run state and lists each attachment with its `attachmentId`, source, and state. `attach_live_source`
-takes `runId`, a `source` object in the same shape as the initial source, and optional `warmFrom` and
-`ref`. Sources on one run must use the same exchange for CEX, or the same chain and protocol for
+takes `runId`, a `source` object in the same shape as the initial source, and optional `warmFrom`,
+`ref`, and `resolveInstrument`. An additional DEX source must omit warmup or set it to zero.
+By default a DEX attachment waits for its first candle to resolve the pair. Sources on one run must use the same exchange for CEX, or the same chain and protocol for
 DEX. The `202` means accepted, not attached: poll `get_live_run` until the state is `ATTACHED` or
 `REFUSED`. Reuse `ref` to make a retry idempotent. A duplicate DEX pair may be refused; the
 strategy's `onDetach` callback receives `REFUSED` for that case.
 
 `detach_live_source` takes `runId` and `attachmentId`. Its `202` means detaching was accepted; poll
-until `DETACHED`. Removing the last source returns the run to `WAITING`; strategy memory is released,
+until `DETACHED`. A strategy can request its own detach. Read its `STRATEGY` reason and use
+`get_live_signals` with `type=system` to find the corresponding `DETACH` record. Removing the last source returns the run to `WAITING`; strategy memory is released,
 paper accounts remain, and open positions for that source are reported as gaps. `rotate_live_stream`
 replaces the secret stream URL; `revoke_live_stream` permanently disables it for that run.
 
@@ -414,7 +421,7 @@ for unavailable source history, invalid pools, cadence or execution-time failure
 
 `download_tickers` and `download_klines` take `exchangeId`, `base`, `quote`, `hour`
 (`YYYY-MM-DDTHH`, UTC), `outputPath`, optional `format` (`lastra` by default, or `parquet`),
-and `overwrite` (`false` by default). Only the last seven days are available here; use
+and `overwrite` (`false` by default). These downloads cover recent hours. Use
 `import_dataset` for older history. The result reports `contentType`, `timestampUnit`,
 `dataStatus`, and `dataThrough` alongside the relative path and byte count. No binary bytes
 are included in the tool reply. Lastra uses `application/vnd.qtsurfer.lastra` and microsecond

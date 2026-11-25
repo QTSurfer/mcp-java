@@ -1,5 +1,8 @@
 package com.qtsurfer.mcp.service;
 
+import com.qtsurfer.api.client.model.Collection;
+import com.qtsurfer.api.client.model.CollectionCreateRequest;
+import com.qtsurfer.api.client.model.CollectionUpdateRequest;
 import com.qtsurfer.api.client.binary.BinaryDownload;
 import com.qtsurfer.api.client.model.PoolDetail;
 
@@ -43,6 +46,8 @@ import com.qtsurfer.api.client.model.StartLiveRequest;
 import com.qtsurfer.api.client.model.UpdateLiveRequest;
 import com.qtsurfer.api.client.model.SendLiveCommandRequest;
 import com.qtsurfer.api.client.model.SweepSensitivity;
+import com.qtsurfer.api.sdk.LiveSignalsQuery;
+import com.qtsurfer.api.sdk.Strategy;
 import com.qtsurfer.api.sdk.Backtest;
 import com.qtsurfer.api.sdk.BacktestOptions;
 import com.qtsurfer.api.sdk.BacktestOutcome;
@@ -204,6 +209,12 @@ public class SdkBacktestingService implements BacktestingService {
     return qts.getLiveSignals(runId, sinceMs, instrument, cursor, limit);
   }
 
+  @Override
+  public LiveSignalPage getLiveSignals(String runId, Long sinceMs, String instrument,
+      String cursor, Integer limit, String type) {
+    return qts.getLiveSignals(runId, new LiveSignalsQuery(sinceMs, instrument, type, cursor, limit));
+  }
+
   /** Internal record tracking a submitted job. */
   private record SessionJob(
       String jobId,
@@ -293,12 +304,12 @@ public class SdkBacktestingService implements BacktestingService {
   @Override
   public StrategyCompilation compileStrategy(String strategyCode) {
     try {
-      com.qtsurfer.api.sdk.Strategy strategy = qts.compile(strategyCode).join();
+      Strategy strategy = qts.compile(strategyCode).join();
       return new StrategyCompilation(strategy.id(), strategy.declaredProperties().stream()
           .map(property -> new StrategyProperty(property.getName(), property.getDescription(),
               property.getDefaultValue(), property.getReflected(), property.getMin(), property.getMax(),
               property.getStep()))
-          .toList(), strategy.requires());
+          .toList(), strategy.requires(), strategy.name(), strategy.language());
     } catch (Exception e) {
       throw new RuntimeException("Compilation failed: " + rootMessage(e), e);
     }
@@ -306,7 +317,43 @@ public class SdkBacktestingService implements BacktestingService {
 
   @Override
   public List<DatasetSummary> listDatasets(boolean includeDeleted) {
-    return qts.getDatasets(includeDeleted).stream().map(SdkBacktestingService::datasetSummary).toList();
+    return listDatasets(includeDeleted, null);
+  }
+
+  @Override
+  public List<DatasetSummary> listDatasets(boolean includeDeleted, String collectionId) {
+    return qts.getDatasets(includeDeleted, collectionId).stream()
+        .map(SdkBacktestingService::datasetSummary).toList();
+  }
+
+  @Override
+  public Collection createCollection(CollectionCreateRequest request) {
+    return qts.createCollection(request);
+  }
+
+  @Override
+  public List<Collection> listCollections() {
+    return qts.getCollections();
+  }
+
+  @Override
+  public Collection getCollection(String collectionId) {
+    return qts.getCollection(collectionId);
+  }
+
+  @Override
+  public Collection updateCollection(String collectionId, CollectionUpdateRequest request) {
+    return qts.updateCollection(collectionId, request);
+  }
+
+  @Override
+  public void deleteCollection(String collectionId) {
+    qts.deleteCollection(collectionId);
+  }
+
+  @Override
+  public DatasetSummary moveDataset(String datasetId, String collectionId) {
+    return datasetSummary(qts.moveDataset(datasetId, collectionId));
   }
 
   @Override
@@ -413,14 +460,15 @@ public class SdkBacktestingService implements BacktestingService {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getType() == null ? null : dataset.getType().getValue(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence(), null, stringify(dataset.getDeletedAt()));
+        dataset.getCadence(), null, stringify(dataset.getDeletedAt()), dataset.getCollectionId(), dataset.getMeta());
   }
 
   private static DatasetSummary datasetSummary(DatasetWithLinks dataset) {
     return new DatasetSummary(dataset.getDatasetId(), dataset.getName(), dataset.getInstrument(),
         dataset.getType() == null ? null : dataset.getType().getValue(),
         dataset.getCurrentVersionId(), stringify(dataset.getFrom()), stringify(dataset.getTo()),
-        dataset.getCadence(), stringify(dataset.getDataFormat()), stringify(dataset.getDeletedAt()));
+        dataset.getCadence(), stringify(dataset.getDataFormat()), stringify(dataset.getDeletedAt()),
+        dataset.getCollectionId(), dataset.getMeta());
   }
 
   private static DatasetUploadStatus uploadStatus(String datasetId, DatasetUploadState state) {
